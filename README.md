@@ -41,7 +41,7 @@ mvn install
 
 and add the following to your ```pom.xml```:
 
-```
+```XML
 <dependencies>
   ...
   <dependency>
@@ -102,7 +102,7 @@ class AuthorMention extends CorefMention {
 
 The ```AuthorMention``` inherits the following fields from its parent class ```CorefMention```:
 
-```
+```Scala
 trait CorefMention extends CubbieWithHTMLFormatting {
   def mentionId: StringSlot = new StringSlot("mentionId")
   def entityId: StringSlot = new StringSlot("entityId")
@@ -186,7 +186,7 @@ The following pseudocode is meant to express its usage:
 The downside to the ```CoreferenceAlgorithm``` framework is that it requires that all of the mentions fit into memory. The alternative ```ParallelCoreference``` framework instead load the mentions as needed from storage on disk.
  
 
-The ```ParallelCoreference``` trait stores a listing of ```CorefTask`` objects:
+The ```ParallelCoreference``` trait stores a listing of ```CorefTask``` objects:
 
 ```Scala
 def allWork: Iterable[CorefTask]
@@ -200,7 +200,7 @@ case class CorefTask(name: String, ids: Iterable[String])
 
 The ```ParallelCoreference``` trait instantiates a thread pool of worker threads that operate over the ```CorefTask``` objects. Each ```CorefTask``` is handled in the same way:
  
-```
+```Scala
 def handleTask(task: CorefTask): Unit = {
     // Fetch the mentions of the task
     val taskWithMentions = getMentions(task)
