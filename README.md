@@ -48,7 +48,6 @@ and add the following to your ```pom.xml```:
   <groupId>edu.umass.cs.iesl.author_coref</groupId>
   <artifactId>author_coref</artifactId>
   <version>1.0-SNAPSHOT</version>
-  <inceptionYear>2015</inceptionYear>
   </dependency>
   ...
 </dependencies>
