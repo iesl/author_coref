@@ -81,7 +81,7 @@ object RunRexaDeterministicBaseline {
     val canopyFunction = (a:AuthorMention) => a.canopy.value
 
     val experiment = new ExperimentWithGroundTruth[AuthorMention] {
-      override val algorithm: CoreferenceAlgorithm[AuthorMention] with IndexableMentions[AuthorMention] = new DeterministicCoreferenceAlgorithm(authorMentions,canopyFunction)
+      override val algorithm: CoreferenceAlgorithm[AuthorMention] with IndexableMentions[AuthorMention] = new DeterministicBaselineCoreferenceAlgorithm(authorMentions,canopyFunction)
 
       override def goldClustering: Iterable[(String, String)] = mentions.map(f => (f.id,f.groundTruth.get))
     }

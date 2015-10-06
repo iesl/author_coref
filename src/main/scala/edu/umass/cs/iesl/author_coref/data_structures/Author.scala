@@ -37,8 +37,9 @@ class Author extends CubbieWithHTMLFormatting {
     middleNames.set(middles)
     lastName.set(last)
   }
-  
-  
+
+  lazy val middleInitials = middleNames.opt.map(f => f.map(_.head.toString)).getOrElse(Iterable())
+
   lazy val normalized: Author = new Author(firstName.opt.map(AuthorName.normalize),middleNames.opt.getOrElse(Seq()).map(AuthorName.normalize),lastName.opt.map(AuthorName.normalize))
 
   def formattedString = lastName.opt.mkString("","",", ") + (firstName.opt ++ middleNames.opt.getOrElse(Iterable())).mkString(" ")

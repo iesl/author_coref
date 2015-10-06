@@ -19,6 +19,7 @@ import cc.factorie.app.nlp.hcoref._
 import cc.factorie.util.Threading
 import cc.factorie.variable.DiffList
 import edu.umass.cs.iesl.author_coref._
+import edu.umass.cs.iesl.author_coref.data_structures.Author
 import edu.umass.cs.iesl.author_coref.data_structures.coreference.{AuthorMention, CorefAuthorVars, CorefMention}
 import edu.umass.cs.iesl.author_coref.experiment.IndexableMentions
 import cc.factorie._
@@ -304,5 +305,29 @@ class DeterministicCoreferenceAlgorithm(override val mentions: Iterable[AuthorMe
           (mention1.coAuthorStrings.toSet intersect mention2.coAuthorStrings.toSet).size >= 2  || // share 1 or more co authors
           ((mention1.topics.opt.getOrElse(Seq()).toSet intersect mention2.topics.opt.getOrElse(Seq()).toSet).size >= 8 && (mention1.keywords.opt.getOrElse(Seq()).toSet intersect mention2.keywords.opt.getOrElse(Seq()).toSet).nonEmpty) // share two topics and a keyword
         )
+  }
+}
+
+
+class DeterministicBaselineCoreferenceAlgorithm(override val mentions: Iterable[AuthorMention], canopyFunction: AuthorMention => String) extends PairwiseCoreferenceAlgorithm(mentions,canopyFunction) {
+
+  def maxAcceptableEditDistance = 5
+  def approxFirstNameMatch(fn1: String, fn2: String): Boolean = {
+    (fn1 editDistance fn2) < maxAcceptableEditDistance
+  }
+
+  def restrictToNonInitialFirstNames: Boolean = true
+
+  def nonInitialFirstNames(m1: AuthorMention,m2: AuthorMention) = firstNameNotInitial(m1.self.value) && firstNameNotInitial(m2.self.value)
+
+  def firstNameNotInitial(author: Author) = author.firstName.isDefined && author.firstName.value.length > 1
+
+  def areCoreferent(mention1: AuthorMention, mention2: AuthorMention) = {
+    mention1.canopy.value == mention2.canopy.value && // same canopy
+      mention1.self.value.lastName.value == mention2.self.value.lastName.value && // last name match
+      approxFirstNameMatch(mention1.self.value.firstName.value, mention2.self.value.firstName.value) && // first name match
+    mention1.self.value.middleInitials == mention2.self.value.middleInitials && // middle name match
+      (mention1.coAuthorStrings.toSet intersect mention2.coAuthorStrings.toSet).nonEmpty &&
+      (!restrictToNonInitialFirstNames || nonInitialFirstNames(mention1,mention2))
   }
 }
