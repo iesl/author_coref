@@ -27,6 +27,12 @@ import scala.collection.JavaConverters._
 
 import scala.util.Random
 
+
+/**
+ * Base trait for algorithms that perform coreference.
+ * Defines interface to run coreference and return predicted clustering.
+ * @tparam MentionType
+ */
 trait CoreferenceAlgorithm[MentionType <: CorefMention] {
 
   val name = this.getClass.ordinaryName
@@ -56,32 +62,106 @@ trait CoreferenceAlgorithm[MentionType <: CorefMention] {
   def clusterIds: Iterable[(String,String)]
 }
 
+/**
+ * A trait defining a canopy for a mention which can be altered
+ */
 trait MutableSingularCanopy extends SingularCanopy {
+
+  /**
+   * The canopy to which the mention belongs.
+   */
   var canopy:String
 }
 
+/**
+ * Base trait for algorithms performing hierarchical coreference.
+ * @tparam V the data type of the variables stored by the nodes of the tree structure
+ * @tparam CanopyInput the data type that is used to derive the canopy
+ */
 trait HierarchicalCorefSystem[V <: NodeVariables[V] with MutableSingularCanopy,CanopyInput] {
-  
+
+  /**
+   * The name of the coreference algorithm
+   */
   val name = this.getClass.ordinaryName
 
+
+  /**
+   * The mentions known to the algorithm
+   * @return
+   */
   def mentions: Iterable[Mention[V]]
 
+
+  /**
+   * The model that will be used. The model stores things such as the
+   * feature templates and associated parameters.
+   * @return
+   */
   def model: CorefModel[V]
 
+  /**
+   * Estimate the number of iterations required
+   * @param ments estimate based on these mentions
+   * @return
+   */
   def estimateIterations(ments: Iterable[Node[V]]) = math.min(ments.size * 30.0, 1000000.0).toInt
 
+  /**
+   * Return the sampler that will be used to perform inference on the given
+   * mentions.
+   * @param mentions the group of mentions that will be used to construct the sampler
+   * @return
+   */
   def sampler(mentions:Iterable[Node[V]]): CorefSampler[V]
 
+  /**
+   * Multiple canopy functions can be used in succession with inference executed in each round.
+   * This function decides which tree nodes will be used in the next round of inference.
+   * Alternatives include: all nodes; only the root nodes; etc
+   * @param mentions the set of mention nodes (leaves)
+   * @return
+   */
   def determineNextRound(mentions: Iterable[Node[V]]): Iterable[Node[V]]
 
+  /**
+   * A canopy function is a conversion from the CanopyInput to a String canopy ID.
+   */
   type CanopyFunction = CanopyInput => String
 
-  def canopyFunctions: Iterable[CanopyFunction]
+  /**
+   * The ordered group of canopy functions. The functions
+   * are applied in succession with determineNextRound specifying
+   * which nodes will be used for inference in the next round.
+   * @return
+   */
+  def canopyFunctions: Iterable[CanopyFunction] //TODO: Make this a Seq
 
+  /**
+   * Of the succession of canopy functions, the canopy function which is the most general
+   * in terms of containment. For example, if the input to canopy function is a first name and
+   * last name pair and there were two canopy functions, 1) the first three characters of the first name and last name
+   * and 2) the last name. The latter function would be the more general. The most general function
+   * must meet the requirement that it divide the data into non-overlapping partitions.
+   * @return
+   */
   def mostGeneralFunction: CanopyFunction = canopyFunctions.last
 
+  /**
+   * Given the variables stored in a node, return the data that will be used to determine the canopy.
+   * @param vars the variables that will be used
+   * @return
+   */
   def getCanopyInput(vars: V): CanopyInput
 
+  /**
+   * Given a canopy function and the mention nodes, assign each mention to a particular canopy
+   * then propagate the canopy assignment to the ancestors of the mentions. Each node is assigned a
+   * single canopy in the current model, but in the future this could be extended to allow nodes
+   * to be assigned to multiple canopies.
+   * @param function the canopy function
+   * @param mentions the mentions
+   */
   def assignCanopy(function: CanopyFunction, mentions: Iterable[Mention[V]]): Unit = mentions.foreach{
     case mention =>
       val canopy = function(getCanopyInput(mention.variables))
@@ -89,12 +169,24 @@ trait HierarchicalCorefSystem[V <: NodeVariables[V] with MutableSingularCanopy,C
       propagateAssignment(canopy,mention.getParent)
   }
 
+  /**
+   * Helper function for propagating the canopy assignment of nodes up the three structure
+   * @param canopy the canopy
+   * @param node the current node
+   */
   def propagateAssignment(canopy: String, node: Option[Node[V]]): Unit = if (node.isDefined) {
     node.get.variables.canopy = canopy
     propagateAssignment(canopy, node.get.getParent)
   }
 
-  def runInGroup(canopyFunctions: Iterable[CanopyFunction], groupNodes: Iterable[Node[V]], mentions: Iterable[Mention[V]]): Unit = {
+  /**
+   * Perform inference on the given group of nodes and then all subgroups of nodes defined by the canopy functions.
+   * Note that canopy functions which do not change the division of mentions will be skipped.
+   * @param canopyFunctions the canopy functions
+   * @param groupNodes the current group of nodes on which to run inference
+   * @param mentions the original set of mention nodes
+   */
+  def performInferenceInGroups(canopyFunctions: Iterable[CanopyFunction], groupNodes: Iterable[Node[V]], mentions: Iterable[Mention[V]]): Unit = {
     if (canopyFunctions.nonEmpty) {
       val cf = canopyFunctions.head
       assignCanopy(cf,mentions)
@@ -116,10 +208,13 @@ trait HierarchicalCorefSystem[V <: NodeVariables[V] with MutableSingularCanopy,C
       // If there was only one canopy in this round, then we are done. The next clustering by canopy
       // will be identical to this one.
       if (numCanopiesThisRound != 1)
-        runInGroup(canopyFunctions.drop(1),determineNextRound(groupNodes),mentions)
+        performInferenceInGroups(canopyFunctions.drop(1),determineNextRound(groupNodes),mentions)
     }
   }
 
+  /**
+   * Execute coreference on all of the mentions in a single thread
+   */
   def run() = {
     println(s"[$name] Running Coreference Experiment.")
     val groupped = mentions.groupBy(m => mostGeneralFunction(getCanopyInput(m.variables)))
@@ -127,10 +222,15 @@ trait HierarchicalCorefSystem[V <: NodeVariables[V] with MutableSingularCanopy,C
     groupped.toIterable.zipWithIndex.foreach {
       case ((group, mentionsInGroup),idx) =>
         println(s"[$name] Processing Group #${idx+1} of $numTotalCanopies, $group, with ${mentionsInGroup.size} mentions")
-        runInGroup(canopyFunctions,mentionsInGroup,mentionsInGroup)
+        performInferenceInGroups(canopyFunctions,mentionsInGroup,mentionsInGroup)
     }
   }
 
+  /**
+   * Execute coreference on all of the mentions in multiple threads
+   * The data is parallelized by the most general canopy function.
+   * @param numThreads the number of threads to use
+   */
   def runPar(numThreads: Int) = {
     println(s"[$name] Running Coreference Experiment.")
     val groupped = mentions.groupBy(m => mostGeneralFunction(getCanopyInput(m.variables)))
@@ -138,11 +238,10 @@ trait HierarchicalCorefSystem[V <: NodeVariables[V] with MutableSingularCanopy,C
     groupped.toIterable.zipWithIndex.grouped(numThreads).toIterable.par.foreach(_.foreach {
       case ((group, mentionsInGroup),idx) =>
         println(s"[$name] Processing Group #${idx + 1} of $numTotalCanopies, $group, with ${mentionsInGroup.size} mentions")
-        runInGroup(canopyFunctions,mentionsInGroup,mentionsInGroup)
+        performInferenceInGroups(canopyFunctions,mentionsInGroup,mentionsInGroup)
     })
   }
   
-
 
 }
 

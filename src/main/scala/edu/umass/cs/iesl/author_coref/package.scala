@@ -73,8 +73,8 @@ package object author_coref {
     def mkParentDirs():Unit =
       file.getParentFile.toNotNull.map(_.mkdirs())
     
-    def lines(codec: String = "UTF-8") = 
-      new BufferedReader(new InputStreamReader(new FileInputStream(file),codec)).toIterator
+    def lines(codec: String = "UTF-8", start: Int = 0, end: Int = Int.MaxValue) =
+      new BufferedReader(new InputStreamReader(new FileInputStream(file),codec)).toIterator.zipWithIndex.filter(p => p._2 >= start && p._2 < end).map(_._1)
     
     def getStringContents(codec: String = "UTF-8") = file.lines(codec).mkString("\n")
     

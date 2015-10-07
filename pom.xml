@@ -36,16 +36,6 @@
       <version>${scala.majorVersion}${scala.minorVersion}</version>
     </dependency>
     <dependency>
-      <groupId>cc.factorie</groupId>
-      <artifactId>factorie_${scala.majorVersion}</artifactId>
-      <version>1.2-SNAPSHOT</version>
-    </dependency>
-    <dependency>
-      <groupId>commons-lang</groupId>
-      <artifactId>commons-lang</artifactId>
-      <version>2.6</version>
-    </dependency>
-    <dependency>
       <groupId>org.json4s</groupId>
       <artifactId>json4s-native_${scala.majorVersion}</artifactId>
       <version>3.2.11</version>
@@ -54,6 +44,16 @@
       <groupId>org.json4s</groupId>
       <artifactId>json4s-jackson_${scala.majorVersion}</artifactId>
       <version>3.2.11</version>
+    </dependency>
+    <dependency>
+      <groupId>cc.factorie</groupId>
+      <artifactId>factorie_${scala.majorVersion}</artifactId>
+      <version>1.2-SNAPSHOT</version>
+    </dependency>
+    <dependency>
+      <groupId>commons-lang</groupId>
+      <artifactId>commons-lang</artifactId>
+      <version>2.6</version>
     </dependency>
     <dependency>
       <groupId>org.apache.commons</groupId>
