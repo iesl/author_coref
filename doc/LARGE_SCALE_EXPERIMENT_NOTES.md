@@ -87,14 +87,14 @@ Note that the algorithms can be used on other data structures with some minor ch
 
 ## Loading Data ##
 
-Suppose we have a collection of ambiguous author records, in order to use this system and populate the MongoDB, we first need to be able to load (or convert) the data into the ```AuthorMention``` data structures. This can be done in many ways. 
+Given a collection of ambiguous author records, in order to use this system and populate the MongoDB, we first need to be able to load (or convert) the data into the ```AuthorMention``` data structures. This can be done in many ways. 
 
 ### JSON ###
 
 
 One possible way is to use JSON serialized data. The ```AuthorMention``` records are JSON serializable and deseriazable. The schema of the JSON object aligns exactly with the schema defined by the "slots" in the ```AuthorMention```. For instance the JSON representation might look like:
 
-```
+```JSON
 { 
     "mentionId" : "P81-1005_LN_Becket_FN_Lee",
     "titleEmbeddingKeywords" : [ "phony", "a", "heuristic", "phonological", "analyzer" ],
@@ -161,7 +161,7 @@ db.addIndices()
 
 ### Using JSON Loader ###
 
-The script ```scripts/db/populate-json-mention.sh``` demonstrates how to load JSON formatted mentions into a MongoDB. 
+The script ```scripts/db/populate-json-mention.sh``` loads JSON formatted mentions into a MongoDB. 
 
 ```Bash
 #!/bin/sh
@@ -335,7 +335,7 @@ To train the embeddings, using a Word2Vec like model, use the following script:
 
 The script uses a word embedding implementation in factorie:
 
-```
+```Bash
 #!/bin/sh
 echo "Training word embeddings"
 START_TIME=$(date +%x_%H:%M:%S:%N)
