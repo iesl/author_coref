@@ -18,9 +18,9 @@ import java.util
 
 import edu.umass.cs.iesl.author_coref.coreference.Canopies
 import edu.umass.cs.iesl.author_coref.data_structures.coreference.{AuthorMention, CorefTask}
-import edu.umass.cs.iesl.author_coref.db.{GenerateAuthorMentionsFromACL, EmptyDataStore}
-import edu.umass.cs.iesl.author_coref.load.LoadACL
-import edu.umass.cs.iesl.author_coref.utilities.{NumThreads, CodecCmdOption}
+import edu.umass.cs.iesl.author_coref.db.{EmptyDataStore, GenerateAuthorMentionsFromACL}
+import edu.umass.cs.iesl.author_coref.load.{LoadACL, LoadJSONAuthorMentions}
+import edu.umass.cs.iesl.author_coref.utilities.{CodecCmdOption, NumThreads}
 
 import scala.collection.JavaConverters._
 import scala.collection.mutable.ArrayBuffer
@@ -70,12 +70,14 @@ object GenerateCorefTasks {
 
 }
 
-
-class GenerateCorefTasksFromACLOpts extends CodecCmdOption with NumThreads {
-  val aclDir = new CmdOption[String]("acl-dir", "The ACL Grobid directory", true)
-  val aclFileCodec = new CmdOption[String]("acl-file-codec", "UTF-8", "STRING", "The encoding of the files in the input directory")
+class GenerateCorefTasksOpts extends CodecCmdOption with NumThreads {
   val idRestrictionsFile = new CmdOption[String]("id-restrictions-file", "Invoke this command option to restrict the ids used to the ones in this file. One id per line", false)
   val outputFile = new CmdOption[String]("output-file", "Where to write the output", true)
+}
+
+class GenerateCorefTasksFromACLOpts extends GenerateCorefTasksOpts with CodecCmdOption with NumThreads {
+  val aclDir = new CmdOption[String]("acl-dir", "The ACL Grobid directory", true)
+  val aclFileCodec = new CmdOption[String]("acl-file-codec", "UTF-8", "STRING", "The encoding of the files in the input directory")
 }
 
 
@@ -100,4 +102,20 @@ object GenerateCorefTasksFromACL {
     GenerateCorefTasks.writeToFile(tasks,new File(opts.outputFile.value))
   }
   
+}
+
+class GenerateCorefTasksFromJSONOpts extends GenerateCorefTasksOpts with CodecCmdOption with NumThreads {
+  val jsonFile = new CmdOption[String]("json-file", "The JSON file containing the mentions", true)
+}
+
+object GenerateCorefTasksFromJSON {
+  def main(args: Array[String]): Unit = {
+    val opts = new GenerateCorefTasksFromJSONOpts()
+    opts.parse(args)
+    val mentions = LoadJSONAuthorMentions.loadMultiple(new File(opts.jsonFile.value),opts.codec.value,opts.numThreads.value)
+    val canopyAssignment = (a: AuthorMention) => Canopies.lastAndFirstNofFirst(a.self.value,3)
+    val ids = if (opts.idRestrictionsFile.wasInvoked) Source.fromFile(opts.idRestrictionsFile.value,opts.codec.value).getLines().toIterable.toSet[String] else Set[String]()
+    val tasks = GenerateCorefTasks.fromMultiple(mentions,canopyAssignment,ids)
+    GenerateCorefTasks.writeToFile(tasks,new File(opts.outputFile.value))
+  }
 }
