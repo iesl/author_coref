@@ -441,6 +441,20 @@ object MyRunParallel {
 
 Currently, the recommended model parameters for this set up are ```config/coref/DefaultWeightsWithoutTopicsAndKeywords.config```. But please note, this may change in the future. 
 
+The output of the coreference algorithm is a file ```all-results.txt``` in the output directory. This file is a two-column tab separted file with mention ids in the left column and entity ids in the right column:
+
+```
+A00-1001_LN_Amble_FN_Tore       1
+A00-1002_LN_Haji_FN_Jan 2
+A00-1002_LN_Hric_FN_Jan 3
+A00-1003_LN_Flank_FN_Sharon     4
+A00-1004_LN_Chen_FN_Jiang       5
+A00-1004_LN_Nie_FN_Jian-Yun     6
+A00-1005_LN_Bagga_FN_Amit       7
+A00-1005_LN_Bowden_FN_G 8
+A00-1005_LN_Strzalkowski_FN_Tomek       9
+```
+
 
 ## Distributing Coreference ##
 
