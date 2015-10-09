@@ -18,20 +18,73 @@ import cc.factorie.variable.{BagOfWordsVariable, DenseDoubleBagVariable}
 import edu.umass.cs.iesl.author_coref.coreference.Keystore
 import edu.umass.cs.iesl.author_coref.data_structures._
 
+/**
+ * AuthorMentions are the data structure used by the coreference algorithms
+ * These data structures store the information pertaining to an ambiguous
+ * instance of an author record
+ */
 class AuthorMention extends CorefMention {
-  
+
+  /**
+   * The information about the author we are try to dismabiguate
+   */
   val self = new CubbieSlot[Author]("self", () => new Author())
+
+  /**
+   * The co-author information
+   */
   val coauthors = new CubbieListSlot[Author]("coauthors",() => new Author())
+
+  /**
+   * The title of the author's paper
+   */
   val title = new StringSlot("title")
+
+  /**
+   * The words from the title that will be used in the word embedding representation
+   * of the title. Note these are case sensitive and so should match the casing of
+   * your learned embeddings.
+   */
   val titleEmbeddingKeywords = new StringListSlot("titleEmbeddingKeywords")
+
+  /**
+   * Topic indicators if LDA or other topic model has been used.
+   */
   val topics = new StringListSlot("topics")
+
+  /**
+   * The text of the mention, typically the abstract or paper body.
+   */
   val text = new StringSlot("text")
+
+  /**
+   * A tokenized version of the text used in sparse BOW features
+   */
   val tokenizedText = new StringListSlot("tokenizedText")
+
+  /**
+   * The venue of publication
+   */
   val venues = new CubbieListSlot[Venue]("venues", () => new Venue())
+
+  /**
+   * The keywords of the publication
+   */
   val keywords = new StringListSlot("keywords")
-  
+
+  /**
+   * The canopies assigned to the mention
+   */
   val canopies = new StringListSlot("canopies")
+
+  /**
+   * The singular canopy assigned to the mention
+   */
   val canopy = new StringSlot("canopy")
+
+  /**
+   * The source of the mention.
+   */
   val source = new StringSlot("source")
 
 
