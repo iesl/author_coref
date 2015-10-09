@@ -52,6 +52,8 @@ class AuthorMention extends CorefMention {
   // The title of the publication
   val title = new StringSlot("title")
   // The words of the title that will be used in the word embedding representation of the title
+  // NOTE: Casing of these keywords should match casing of learned embeddings
+  // Typically, we recommend your embeddings be lowercased and so these keywords should be as well.
   val titleEmbeddingKeywords = new StringListSlot("titleEmbeddingKeywords")
   // The topics discovered using LDA or similar method
   val topics = new StringListSlot("topics")
