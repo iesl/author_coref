@@ -398,8 +398,6 @@ Now we have generated the required inputs to the disambiguation system. The prog
 
 An example program for parallel disambiguation is:
  
-The code snippet for this is:
-
 ```Scala
 object MyRunParallel {
 
