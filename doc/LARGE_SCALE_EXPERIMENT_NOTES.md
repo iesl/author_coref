@@ -439,6 +439,14 @@ object MyRunParallel {
 }
 ```
 
+Currently, the recommended model parameters for this set up are ```config/coref/DefaultWeightsWithoutTopicsAndKeywords.config```. But please note, this may change in the future. 
+
+
 ## Distributing Coreference ##
 
 The simplest (though perhaps too naive) way to distribute the coreference work is to split up the coref task file into several chunks and to run a parallel coreference job with a different task file on each machine. One machine will run the MongoDB instance-- make sure to specify the name of this machine instead of localhost in the config files. 
+
+
+## Coming Soon ##
+
+Code in this project to generate keywords from text and to learn topics. 
