@@ -262,7 +262,7 @@ class StandardHCorefSystem(opts: AuthorCorefModelOptions, val mentions: Iterable
     with AutoStoppingSampler[CorefAuthorVars]
     with CanopyPairGenerator[CorefAuthorVars]
     with AuthorCorefMoveGenerator[CorefAuthorVars]
-    with DebugCoref[CorefAuthorVars] {
+    with DebugCoref[CorefAuthorVars] with PrintlnLogger {
     def autoStopThreshold = 50000
     def newInstance(implicit d: DiffList) = new Node[CorefAuthorVars](new CorefAuthorVars)
   }
