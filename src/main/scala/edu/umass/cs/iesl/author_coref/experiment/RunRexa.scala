@@ -40,7 +40,7 @@ object RunRexa {
 
     println("Loading the topics database")
     val topicsDB = if (opts.topicsFile.wasInvoked) LoadTopics.load(new File(opts.topicsFile.value),opts.codec.value) else new TopicsDB(Map())
-    val keywordsDB = if (opts.topicsFile.wasInvoked) LoadKeywords.load(new File(opts.keywordsFile.value),opts.codec.value) else new KeywordsDB(Map())
+    val keywordsDB = if (opts.keywordsFile.wasInvoked) LoadKeywords.load(new File(opts.keywordsFile.value),opts.codec.value) else new KeywordsDB(Map())
 
     val mentions = LoadRexa.fromDir(new File(opts.rexaDir.value), opts.codec.value)
     val authorMentions = GenerateAuthorMentionsFromRexa.processAll(mentions,topicsDB,keywordsDB)
