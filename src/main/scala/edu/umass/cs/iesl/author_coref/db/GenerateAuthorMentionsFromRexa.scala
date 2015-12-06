@@ -17,6 +17,8 @@ import edu.umass.cs.iesl.author_coref._
 import edu.umass.cs.iesl.author_coref.data_structures.coreference.AuthorMention
 import edu.umass.cs.iesl.author_coref.data_structures.{Author, RexaAuthorMention}
 
+import scala.collection.mutable.ArrayBuffer
+
 // Creates the author mention from the rexa data structures
 object GenerateAuthorMentionsFromRexa {
 
@@ -42,8 +44,10 @@ object GenerateAuthorMentionsFromRexa {
     authorMention.self.set(authorInFocus)
     
     // Co authors
-    val coauthors = (mention.authorlist ++ mention.alt_authorlist).filterNot(authorInFocus == _).map(_.normalized).filterNot(_.isEmpty).toSet.toSeq
-    authorMention.coauthors.set(coauthors)
+    val coauthors = (mention.authorlist ++ mention.alt_authorlist).map(_.normalized).filterNot(_.isEmpty).filterNot(authorInFocus.equals)
+    val nonDuplicates = new ArrayBuffer[Author](coauthors.size)
+    coauthors.foreach(c => if (!nonDuplicates.exists(c.equals)) nonDuplicates += c )
+    authorMention.coauthors.set(nonDuplicates)
         
     // Title
     if (mention.title.isDefined) 
