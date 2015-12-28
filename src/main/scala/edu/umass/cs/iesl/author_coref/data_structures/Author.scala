@@ -17,11 +17,8 @@ import cc.factorie.app.bib.parser.Dom
 import org.apache.commons.lang3.StringUtils._
 
 
-class Author extends CubbieWithHTMLFormatting {
+class Author extends PersonName {
   
-  val firstName = new StringSlot("firstName")
-  val middleNames = new StringListSlot("middleNames")
-  val lastName = new StringSlot("lastName")
   val emails = new StringListSlot("emails")
   val institutions = new StringListSlot("institutions")
 
