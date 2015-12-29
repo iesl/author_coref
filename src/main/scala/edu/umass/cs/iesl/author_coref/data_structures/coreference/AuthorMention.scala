@@ -102,9 +102,9 @@ class AuthorMention extends CorefMention {
     val institutionsBag = new BagOfWordsVariable()
 
     self.opt.foreach (a => {
-      a.firstName.opt.foreach(f => firstNames += f)
-      a.middleNames.opt.foreach(m => middleNames ++= m)
-      a.lastName.opt.foreach(l => lastNames += l)
+      a.firstName.opt.filter(_.nonEmpty).foreach(f => firstNames += f)
+      a.middleNames.opt.foreach(m => middleNames ++= m.filter(_.nonEmpty))
+      a.lastName.opt.filter(_.nonEmpty).foreach(l => lastNames += l)
       a.emails.opt.foreach(e => emailsBag ++= e)
       a.institutions.opt.foreach(i => institutionsBag ++= i)
     })
