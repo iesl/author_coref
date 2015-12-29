@@ -31,7 +31,7 @@ object BrowseEmbeddings {
     val opts = new BrowseEmbeddingsOpts
     opts.parse(args)
 
-    val keystore = InMemoryKeystore.fromFile(new File(opts.keystorePath.value)," ", "UTF-8")
+    val keystore = InMemoryKeystore.fromFileContainingDim(new File(opts.keystorePath.value)," ", "UTF-8")
 
     println("Use CTRL-C to quit")
     val done = false

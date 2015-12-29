@@ -75,7 +75,7 @@ object InMemoryKeystore {
     if (caseSensitive) new InMemoryKeystore(_store) else new CaseInsensitiveInMemoryKeystore(_store)
   }
 
-  def fromFile(embeddingFile: File, fileDelimiter: String, codec: String, caseSensitive: Boolean = true) = {
+  def fromFileContainingDim(embeddingFile: File, fileDelimiter: String, codec: String, caseSensitive: Boolean = true) = {
 
     val lines = new BufferedReader(new InputStreamReader(new FileInputStream(embeddingFile),codec)).toIterator
     val Array(numItems,dimensionality) = lines.next().split(fileDelimiter).map(_.toInt)
