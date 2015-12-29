@@ -13,6 +13,7 @@
 
 package edu.umass.cs.iesl.author_coref.utilities
 
+import cc.factorie.app.bib.hcoref.InMemoryHashMapKeystoreOpts
 import cc.factorie.util.DefaultCmdOptions
 
 
@@ -33,4 +34,8 @@ trait MongoDBOpts extends DefaultCmdOptions{
   val port = new CmdOption[Int]("port", "The port of the mongo server", true)
   val dbname = new CmdOption[String]("dbname", "The name of the database", true)
   val collectionName = new CmdOption[String]("collection-name", "The name of the collection", true)
+}
+
+trait KeystoreOpts extends InMemoryHashMapKeystoreOpts {
+  val caseSensitive = new CmdOption[Boolean]("case-sensitive", true, "BOOLEAN", "Whether or not to make the keystore case sensitive")
 }

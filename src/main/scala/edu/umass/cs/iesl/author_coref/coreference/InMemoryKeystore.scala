@@ -52,10 +52,14 @@ class InMemoryKeystore(map: scala.collection.Map[String,Array[Double]]) extends 
   }
 }
 
+class CaseInsensitiveInMemoryKeystore(map: scala.collection.Map[String,Array[Double]]) extends InMemoryKeystore(map.map(f => f._1.toLowerCase -> f._2)) {
+  override def retrieve(key: String): Option[Array[Double]] = map.get(key.toLowerCase)
+}
+
 
 object InMemoryKeystore {
 
-  def fromFile(embeddingFile:File, dimensionality:Int, fileDelimiter:String, codec: String) = {
+  def fromFile(embeddingFile:File, dimensionality:Int, fileDelimiter:String, codec: String, caseSensitive: Boolean = true) = {
     val _store = new util.HashMap[String,Array[Double]](10000).asScala
 
     new BufferedReader(new InputStreamReader(new FileInputStream(embeddingFile),codec)).toIterator.foreach {
@@ -68,10 +72,10 @@ object InMemoryKeystore {
           println(s"[${this.getClass.getSimpleName}] WARNING: error reading line: $line")
         }
     }
-    new InMemoryKeystore(_store)
+    if (caseSensitive) new InMemoryKeystore(_store) else new CaseInsensitiveInMemoryKeystore(_store)
   }
 
-  def fromFile(embeddingFile: File, fileDelimiter: String, codec: String) = {
+  def fromFile(embeddingFile: File, fileDelimiter: String, codec: String, caseSensitive: Boolean = true) = {
 
     val lines = new BufferedReader(new InputStreamReader(new FileInputStream(embeddingFile),codec)).toIterator
     val Array(numItems,dimensionality) = lines.next().split(fileDelimiter).map(_.toInt)
@@ -87,7 +91,7 @@ object InMemoryKeystore {
           println(s"[${this.getClass.getSimpleName}] WARNING: error reading line: $line")
         }
     }
-    new InMemoryKeystore(_store)
+    if (caseSensitive) new InMemoryKeystore(_store) else new CaseInsensitiveInMemoryKeystore(_store)
 
   }
 }

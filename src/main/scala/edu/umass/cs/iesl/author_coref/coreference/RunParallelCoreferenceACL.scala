@@ -13,16 +13,15 @@
 
 package edu.umass.cs.iesl.author_coref.coreference
 
-import java.io.{PrintWriter, File}
+import java.io.{File, PrintWriter}
 
-import cc.factorie.app.bib.hcoref.InMemoryHashMapKeystoreOpts
 import edu.umass.cs.iesl.author_coref.data_structures.coreference.AuthorMention
 import edu.umass.cs.iesl.author_coref.db.AuthorMentionDB
 import edu.umass.cs.iesl.author_coref.load.LoadCorefTasks
-import edu.umass.cs.iesl.author_coref.utilities.{CodecCmdOption, MongoDBOpts}
+import edu.umass.cs.iesl.author_coref.utilities.{CodecCmdOption, KeystoreOpts, MongoDBOpts}
 
 
-class RunParallelOpts extends MongoDBOpts with CodecCmdOption with AuthorCorefModelOptions with InMemoryHashMapKeystoreOpts {
+class RunParallelOpts extends MongoDBOpts with CodecCmdOption with AuthorCorefModelOptions with KeystoreOpts {
   val corefTaskFile = new CmdOption[String]("coref-task-file", "The file containing the coref tasks", true)
   val outputDir = new CmdOption[String]("output-dir", "Where to write the output", true)
   val numThreads = new CmdOption[Int]("num-threads", 20, "INT", "Number of threads to use")
@@ -37,7 +36,7 @@ object RunParallelCoreferenceACL {
     opts.parse(args)
 
     // Load all of the coref tasks into memory, so they can easily be distributed amongst the different threads
-    val allWork = LoadCorefTasks.load(new File(opts.corefTaskFile.value),opts.codec.value).toIterable
+    val allWork = LoadCorefTasks.load(new File(opts.corefTaskFile.value),opts.codec.value)
 
     // Create the interface to the MongoDB containing the mentions
     val db = new AuthorMentionDB(opts.hostname.value, opts.port.value, opts.dbname.value, opts.collectionName.value, false)
