@@ -18,6 +18,6 @@ trait PersonName extends CubbieWithHTMLFormatting{
   val firstName = new StringSlot("firstName")
   val middleNames = new StringListSlot("middleNames")
   val lastName = new StringSlot("lastName")
-  val suffixes = new StringSlot("suffixes")
+  val suffixes = new StringListSlot("suffixes")
 
 }
