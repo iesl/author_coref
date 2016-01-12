@@ -27,54 +27,54 @@ import scala.collection.JavaConverters._
 import scala.collection.mutable.ArrayBuffer
 
 /**
- * The base trait for running coreference in multiple threads. 
- * Parallelizing across canopies.  
- */
+  * The base trait for running coreference in multiple threads.
+  * Parallelizing across canopies.
+  */
 trait ParallelCoreference {
 
   /**
-   * Keeps track of the running times 
-   */
+    * Keeps track of the running times
+    */
   val times = new ArrayBuffer[(String,String)]()
 
   /**
-   * All of the canopy groups that need to be processed  
-   * @return
-   */
+    * All of the canopy groups that need to be processed
+    * @return
+    */
   def allWork: Iterable[CorefTask]
 
   /**
-   * The mechanism for outputing the coreference groups 
-   * @return
-   */
+    * The mechanism for outputing the coreference groups
+    * @return
+    */
   def writer: CorefOutputWriter
 
   /**
-   * Given a task, fetch the algorithm that will be used to run it 
-   * @param task - the task
-   * @return
-   */
+    * Given a task, fetch the algorithm that will be used to run it
+    * @param task - the task
+    * @return
+    */
   def algorithmFromTask(task: CorefTaskWithMentions): CoreferenceAlgorithm[AuthorMention]
 
   /**
-   * Run the disambiguation algorithm on the given task. 
-   * @param alg - the algorithm
-   * @param task - the task
-   */
+    * Run the disambiguation algorithm on the given task.
+    * @param alg - the algorithm
+    * @param task - the task
+    */
   def runCoref(alg: CoreferenceAlgorithm[AuthorMention], task: CorefTaskWithMentions) = alg.execute()
 
   /**
-   * Fetch the AuthorMentions associated with a given task
-   * @param corefTask - the task
-   * @return - the task with mentions
-   */
+    * Fetch the AuthorMentions associated with a given task
+    * @param corefTask - the task
+    * @return - the task with mentions
+    */
   def getMentions(corefTask: CorefTask):CorefTaskWithMentions
 
   /**
-   * Given a task, fetch the mentions, generate the algorithm instance, run the task 
-   * and write out the results.  
-   * @param task
-   */
+    * Given a task, fetch the mentions, generate the algorithm instance, run the task
+    * and write out the results.
+    * @param task
+    */
   def handleTask(task: CorefTask): Unit = {
     val wrtr = writer
     val taskWithMentions = getMentions(task)
@@ -84,10 +84,10 @@ trait ParallelCoreference {
   }
 
   /**
-   * Distribute the coref tasks across many threads 
-   * @param numThreads - number of threads to use
-   * @return
-   */
+    * Distribute the coref tasks across many threads
+    * @param numThreads - number of threads to use
+    * @return
+    */
   def runInParallel(numThreads: Int) = {
     val corefStart = System.currentTimeMillis()
     times.+=(("Coreference Starting Timestamp", new Date(System.currentTimeMillis()).toString))
@@ -110,20 +110,20 @@ trait ParallelCoreference {
   }
 
   /**
-   * Collect the output and format it in some way 
-   */
+    * Collect the output and format it in some way
+    */
   def finalizeOutput(): Unit
 
   /**
-   * Display the running time information  
-   */
+    * Display the running time information
+    */
   def printTimes() = times.foreach(f => println(f._1 + ":\t" + f._2))
 
 }
 
 /**
- * Load mentions from a mongo db based on ids
- */
+  * Load mentions from a mongo db based on ids
+  */
 trait LoadMentionsFromMongo {
 
   val datastore: Datastore[String,AuthorMention]
@@ -133,11 +133,11 @@ trait LoadMentionsFromMongo {
 }
 
 /**
- * Base class for the distributed coreference
- * @param allWork - the complete group of tasks
- * @param datastore - the interface to mongo
- * @param outputDir - where to write the output
- */
+  * Base class for the distributed coreference
+  * @param allWork - the complete group of tasks
+  * @param datastore - the interface to mongo
+  * @param outputDir - where to write the output
+  */
 abstract class StandardParallelCoreference(override val allWork: Iterable[CorefTask],
                                            override val datastore: Datastore[String, AuthorMention],
                                            outputDir: File) extends ParallelCoreference with LoadMentionsFromMongo {
@@ -152,26 +152,30 @@ abstract class StandardParallelCoreference(override val allWork: Iterable[CorefT
 
 
 /**
- * The implementation using multiple canopies (what was submitted) 
- * @param allWork - the complete group of tasks
- * @param datastore - the interface to mongo
- * @param opts - the model parameters
- * @param keystore - the embedding lookup table
- * @param canopyFunctions - the canopy functions to use
- * @param outputDir - where to write the output
- */
+  * The implementation using multiple canopies (what was submitted)
+  * @param allWork - the complete group of tasks
+  * @param datastore - the interface to mongo
+  * @param opts - the model parameters
+  * @param keystore - the embedding lookup table
+  * @param canopyFunctions - the canopy functions to use
+  * @param outputDir - where to write the output
+  */
 class ParallelHierarchicalCoref(override val allWork: Iterable[CorefTask],
-                                           override val datastore: Datastore[String, AuthorMention],
-                                           opts: AuthorCorefModelOptions,
-                                           keystore: Keystore,
-                                           canopyFunctions: Iterable[(AuthorMention => String)],
-                                           outputDir: File) extends StandardParallelCoreference(allWork,datastore,outputDir) {
-  override def algorithmFromTask(task: CorefTaskWithMentions): CoreferenceAlgorithm[AuthorMention] = new HierarchicalCoreferenceAlgorithm(opts,task.mentions,keystore,canopyFunctions)
+                                override val datastore: Datastore[String, AuthorMention],
+                                opts: AuthorCorefModelOptions,
+                                keystore: Keystore,
+                                canopyFunctions: Iterable[(AuthorMention => String)],
+                                outputDir: File) extends StandardParallelCoreference(allWork,datastore,outputDir) {
+  override def algorithmFromTask(task: CorefTaskWithMentions): CoreferenceAlgorithm[AuthorMention] = {
+    val alg = new HierarchicalCoreferenceAlgorithm(opts,task.mentions,keystore,canopyFunctions)
+    alg.quietPrintStatements = true
+    alg
+  }
 }
 
 /**
- * Interface for writing the coreference output 
- */
+  * Interface for writing the coreference output
+  */
 trait CorefOutputWriter {
 
   def write(task: CorefTask, results: Iterable[(String,String)])
@@ -201,11 +205,11 @@ object CorefOutputWriterHelper {
 }
 
 /**
- * Implementation of CorefOutput interface which writes the coref tasks results each to their own file
- * in a given directory. A subdirectory structure is create so that "ls" does not take too long
- * @param outputDirectory - the output directory
- * @param codec - the encoding of the files (default UTF8)
- */
+  * Implementation of CorefOutput interface which writes the coref tasks results each to their own file
+  * in a given directory. A subdirectory structure is create so that "ls" does not take too long
+  * @param outputDirectory - the output directory
+  * @param codec - the encoding of the files (default UTF8)
+  */
 class TextCorefOutputWriter(outputDirectory: File, codec: String = "UTF-8") extends CorefOutputWriter {
 
   val validFilePathRegex = "^[1234567890qwertyuiopasdfghjklzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNM\\._]+$"
