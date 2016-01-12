@@ -28,7 +28,7 @@ mvn clean package
 This will create a self contained jar with all of the project dependencies here:
 
 ```
-target/author_coref-1.0-SNAPSHOT-jar-with-dependencies.jar 
+target/author_coref-1.1-SNAPSHOT-jar-with-dependencies.jar 
 ```
 
 This ```jar``` will be used to run the various components of the project.
@@ -47,7 +47,7 @@ and add the following to your ```pom.xml```:
   <dependency>
   <groupId>edu.umass.cs.iesl.author_coref</groupId>
   <artifactId>author_coref</artifactId>
-  <version>1.0-SNAPSHOT</version>
+  <version>1.1-SNAPSHOT</version>
   </dependency>
   ...
 </dependencies>
@@ -59,7 +59,7 @@ We provide instructions for re-running / reproducing Author Disambiguation on Re
 
   - [Rexa](doc/REXA_EXPERIMENT.md)
   - [ACL](doc/ACL_EXPERIMENT.md)
-  - [Custom Experiment](doc/CUSTOM_EXPERIMENT.md)
+  - [Custom Experiment](doc/LARGE_SCALE_EXPERIMENT_NOTES.md)
 
 ## Implementation Overview ##
 
@@ -108,8 +108,7 @@ trait CorefMention extends CubbieWithHTMLFormatting {
 }
 ```
 
-To use author mentions of your own custom format. You can either write code to load your data directly into the ```AuthorMention``` objects, or, as was done for the Rexa and ACL data (shown in more detail below) define a intermediate data structure which is then converted into an ```AuthorMention```.
-
+There is support for serializing```AuthorMentions``` to JSON (see [Custom Experiment](doc/LARGE_SCALE_EXPERIMENT_NOTES.md) for more details). You may also write code to load your data directly into the ```AuthorMention``` objects, or, as was done for the Rexa and ACL data (shown in more detail below) define a intermediate data structure which is then converted into an ```AuthorMention```.
 
 These ```AuthorMention``` data structures are disambiguated by implementations of the ```CoreferenceAlgorithm``` trait. 
  
@@ -150,7 +149,7 @@ Implementations of this algorithm include the Hierarchical method at the focus o
 
 
 ```Scala
-class HierarchicalCoreferenceAlgorithm(opts: AuthorCorefModelOptions, override val mentions: Iterable[AuthorMention], keystore: Keystore, canopyFunctions: Iterable[AuthorMention => String]) extends CoreferenceAlgorithm[AuthorMention] with IndexableMentions[AuthorMention]
+class HierarchicalCoreferenceAlgorithm(opts: AuthorCorefModelOptions, override val mentions: Iterable[AuthorMention], keystore: Keystore, canopyFunctions: Iterable[AuthorMention => String], nameProcessor: NameProcessor) extends CoreferenceAlgorithm[AuthorMention] with IndexableMentions[AuthorMention]
 ```
 
 The following pseudocode is meant to express its usage:
@@ -165,13 +164,16 @@ The following pseudocode is meant to express its usage:
     val mentions = LoadAuthorMentions(authorMentionsFile)
     
     // Load the word embeddings
-    val keystore = InMemoryKeystore.fromFile(new File(keystorePath),keystoreDim,keystoreDelim,codec)
+    val keystore = InMemoryKeystore.fromCmdOpts(opts)
     
     // Define the canopy functions 
-    val canopyFunctions = Iterable((a:AuthorMention) => Canopies.fullName(a), (a:AuthorMention) => Canopies.lastAndFirstNofFirst(a.self.value,3))
+    val canopyFunctions = Iterable((a:AuthorMention) => Canopies.fullName(a.self.value), (a:AuthorMention) => Canopies.lastAndFirstNofFirst(a.self.value,3))
+
+    // Use a name processor
+    val nameProcessor = CaseInsensitiveReEvaluatingNameProcessor
 
     // Initialize the algorithm
-    val algorithm = new HierarchicalCoreferenceAlgorithm(opts,authorMentions,keystore,canopyFunctions)
+    val algorithm = new HierarchicalCoreferenceAlgorithm(opts,authorMentions,keystore,canopyFunctions,nameProcessor)
     
     // Run the algorithm
     algorithm.execute()
@@ -182,7 +184,7 @@ The following pseudocode is meant to express its usage:
 ```
 
 
-The downside to the ```CoreferenceAlgorithm``` framework is that it requires that all of the mentions fit into memory. The alternative ```ParallelCoreference``` framework instead load the mentions as needed from storage on disk.
+The downside to the ```CoreferenceAlgorithm``` framework is that it requires that all of the mentions fit into memory. The alternative ```ParallelCoreference``` framework instead loads the mentions as needed from storage on disk.
  
 
 The ```ParallelCoreference``` trait stores a listing of ```CorefTask``` objects:
@@ -224,4 +226,58 @@ The ```AuthorMentionDB``` has an index on the ```mentionID``` field; it can be q
 
 ```Scala
 override def get(key: String)
+```
+
+The class ```ParallelHierarchicalCoref``` extends the ```ParallelCoreference``` interface using the hierarchical method for disambiguation. The constructor for this class is as follows:
+
+```Scala
+class ParallelHierarchicalCoref(override val allWork: Iterable[CorefTask], // The coreference tasks to execute
+                                override val datastore: Datastore[String, AuthorMention], // access to the database storing author mentions
+                                opts: AuthorCorefModelOptions, // the model parameters
+                                keystore: Keystore, // word embedding database
+                                canopyFunctions: Iterable[(AuthorMention => String)], // the canopy functions to use
+                                outputDir: File, // the output directory
+                                override val nameProcessor: NameProcessor // the name processor to use
+                                ) extends StandardParallelCoreference(allWork,datastore,outputDir) 
+```
+
+The usage of the ```ParallelHierarchicalCoref``` class can be see in the ```RunParallelCoreference``` class. It's usage is demonstrated below:
+
+```Scala
+val opts = new RunParallelOpts
+opts.parse(args)
+
+// Load all of the coref tasks into memory, so they can easily be distributed among the different threads
+val allWork = LoadCorefTasks.load(new File(opts.corefTaskFile.value),opts.codec.value)
+
+// Create the interface to the MongoDB containing the mentions
+val db = new AuthorMentionDB(opts.hostname.value, opts.port.value, opts.dbname.value, opts.collectionName.value, false)
+
+// The lookup table containing the embeddings. 
+val keystore = InMemoryKeystore.fromCmdOpts(opts)
+
+// Create the output directory
+new File(opts.outputDir.value).mkdirs()
+
+// Canopy Functions
+// Convert the strings into canopy functions (mappings of authors to strings) and then to functions from author mentions to strings
+val canopyFunctions = opts.canopies.value.map(Canopies.fromString).map(fn => (authorMention: AuthorMention) => fn(authorMention.self.value))
+
+// Name processor
+// The name processor to apply to the mentions
+val nameProcessor = NameProcessor.fromString(opts.nameProcessor.value)
+
+// Initialize the coreference algorithm
+val parCoref = new ParallelHierarchicalCoref(allWork,db,opts,keystore,canopyFunctions,new File(opts.outputDir.value),nameProcessor)
+
+// Run the algorithm on all the tasks
+parCoref.runInParallel(opts.numThreads.value)
+
+// Write the timing info
+val timesPW = new PrintWriter(new File(opts.outputDir.value,"timing.txt"))
+timesPW.println(parCoref.times.map(f => f._1 + "\t" + f._2).mkString("\n"))
+timesPW.close()
+
+// display the timing info
+parCoref.printTimes()
 ```

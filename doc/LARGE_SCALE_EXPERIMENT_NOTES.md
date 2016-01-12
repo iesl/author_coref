@@ -8,7 +8,7 @@ Please email me with any questions/issues you encounter.
 
 ## Recommended Machine Setup ##
 
- - 40+ GB RAM
+ - 20-40+ GB RAM
  - 20+ CPUs
  - [NUMA](https://en.wikipedia.org/wiki/Non-uniform_memory_access) architecture (untested without this)
  - MongoDB 3.0+ installed following any additional instructions Mongo gives for your OS.
@@ -52,8 +52,7 @@ class AuthorMention extends CorefMention {
   // The title of the publication
   val title = new StringSlot("title")
   // The words of the title that will be used in the word embedding representation of the title
-  // NOTE: Casing of these keywords should match casing of learned embeddings
-  // Typically, we recommend your embeddings be lowercased and so these keywords should be as well.
+  // NOTE: The casing here should match the casing used in your embedding keystore
   val titleEmbeddingKeywords = new StringListSlot("titleEmbeddingKeywords")
   // The topics discovered using LDA or similar method
   val topics = new StringListSlot("topics")
@@ -131,6 +130,12 @@ object LoadJSONAuthorMentions {
 }
 ```
 
+Additionally, to save ```AuthorMentions``` in JSON format you may do the following:
+
+```Scala
+WriteAuthorMentionsToJSON.write(mentions: Iterator[AuthorMention], file: File, codec: String, bufferSize: Int = 1000)
+```
+
 ### Other Formats ###
 
 Alternatively, you can write a custom loader for your data. You may either write a loader that loads directly in the ```AuthorMention``` format or you may define an intermediate data structure that is then converted into the ```AuthorMention``` format. The second option is done for the Rexa and ACL data. There are ```RexaAuthorMention```s and ```ACLAuthorMention```s which are then converted into ```AuthorMention```s using the classes ```GenerateAuthorMentionsFromRexa``` and ```GenerateAuthorMentionsFromACL``` respectively. You may find it helpful to use these classes as a template. 
@@ -168,7 +173,7 @@ The script ```scripts/db/populate-json-mention.sh``` loads JSON formatted mentio
 ```Bash
 #!/bin/sh
 
-jarpath="target/author_coref-1.0-SNAPSHOT-jar-with-dependencies.jar"
+jarpath="target/author_coref-1.1-SNAPSHOT-jar-with-dependencies.jar"
 
 time java -Xmx40G -cp $jarpath edu.umass.cs.iesl.author_coref.db.PopulateAuthorMentionDBFromJSON \
 --config=config/db/PopulateJSONMentions.config
@@ -246,7 +251,7 @@ The script calls the Scala class ```GenerateCorefTasksFromJSON```
 ```Bash
 #!/bin/sh
 
-jarpath="target/author_coref-1.0-SNAPSHOT-jar-with-dependencies.jar"
+jarpath="target/author_coref-1.1-SNAPSHOT-jar-with-dependencies.jar"
 
 time java -Xmx20G -cp $jarpath edu.umass.cs.iesl.author_coref.process.GenerateCorefTasksFromJSON \
 --config=config/coref/CreateCorefTasksJSON.config
@@ -258,7 +263,11 @@ The configuration of the script can be edited in the ```config/coref/CreateCoref
 --json-file=data/mentions.json
 --output-file=data/coref-tasks.tsv
 --num-threads=18
+--canopies=lastAndFirst1ofFirst
+--name-processor=CaseInsensitiveReEvaluatingNameProcessor
 ```
+
+Note how the canopy function and name processor are specified in the command line options. 
 
 The class ```GenerateCorefTasksFromJSON``` is defined in a similar way to the above description:
 
@@ -268,9 +277,10 @@ object GenerateCorefTasksFromJSON {
     val opts = new GenerateCorefTasksFromJSONOpts()
     opts.parse(args)
     val mentions = LoadJSONAuthorMentions.loadMultiple(new File(opts.jsonFile.value),opts.codec.value,opts.numThreads.value)
-    val canopyAssignment = (a: AuthorMention) => Canopies.lastAndFirstNofFirst(a.self.value,3)
+    val canopyAssignment = opts.canopies.value.map(Canopies.fromString).map(fn => (authorMention: AuthorMention) => fn(authorMention.self.value)).last
     val ids = if (opts.idRestrictionsFile.wasInvoked) Source.fromFile(opts.idRestrictionsFile.value,opts.codec.value).getLines().toIterable.toSet[String] else Set[String]()
-    val tasks = GenerateCorefTasks.fromMultiple(mentions,canopyAssignment,ids)
+    val nameProcessor = NameProcessor.fromString(opts.nameProcessor.value)
+    val tasks = GenerateCorefTasks.fromMultiple(mentions,canopyAssignment,ids,nameProcessor)
     GenerateCorefTasks.writeToFile(tasks,new File(opts.outputFile.value))
   }
 }
@@ -342,7 +352,7 @@ The script uses a word embedding implementation in factorie:
 echo "Training word embeddings"
 START_TIME=$(date +%x_%H:%M:%S:%N)
 START=$(date +%s)
-jarpath="target/author_coref-1.0-SNAPSHOT-jar-with-dependencies.jar"
+jarpath="target/author_coref-1.1-SNAPSHOT-jar-with-dependencies.jar"
 
 # Edit these settings if you need to
 training_data="data/embedding/training_data.txt"
@@ -370,7 +380,7 @@ echo -e "Ended script at $END_TIME"
 
 ## Running Disambiguation ##
 
-Now we have generated the required inputs to the disambiguation system. The program which runs the parallel coreference takes the following settings: 
+Now we have generated the required inputs to the disambiguation system. The program which runs the parallel coreference takes the following settings. An example config file of these settings is ```config/coref/ParallelCoref.config```.
 
 ```
 # Where to find the coref task file, which specifies the separate coref jobs for execution
@@ -388,18 +398,25 @@ Now we have generated the required inputs to the disambiguation system. The prog
 # The word embeddings
 --embedding-dim=200
 --embedding-file=data/embedding/embeddings.txt
+--case-sensitive=true
 
 # MongoDB
 --hostname=localhost
 --port=25752
 --dbname=authormention_db
 --collection-name=authormention
+
+# Canopy Functions to use
+--canopies=fullName,firstAndLast,lastAndFirst3ofFirst,lastAndFirst1ofFirst
+
+# Name processor to use
+--name-processor=CaseInsensitiveReEvaluatingNameProcessor
 ```
 
-An example program for parallel disambiguation is:
+An example program for parallel disambiguation is in ```RunParallelCoreference```:
  
 ```Scala
-object MyRunParallel {
+object RunParallelCoreference {
 
   def main(args: Array[String]): Unit = {
 
@@ -407,30 +424,35 @@ object MyRunParallel {
     val opts = new RunParallelOpts
     opts.parse(args)
 
-    // Load all of the coref tasks into memory, so they can easily be distributed amongst the different threads
-    val allWork = LoadCorefTasks.load(new File(opts.corefTaskFile.value),opts.codec.value).toIterable
+    // Load all of the coref tasks into memory, so they can easily be distributed among the different threads
+    val allWork = LoadCorefTasks.load(new File(opts.corefTaskFile.value),opts.codec.value)
 
     // Create the interface to the MongoDB containing the mentions
     val db = new AuthorMentionDB(opts.hostname.value, opts.port.value, opts.dbname.value, opts.collectionName.value, false)
-    
+
     // The lookup table containing the embeddings. 
-    val keystore = InMemoryKeystore.fromFile(new File(opts.keystorePath.value),opts.keystoreDim.value,opts.keystoreDelim.value,opts.codec.value)
+    val keystore = InMemoryKeystore.fromCmdOpts(opts)
 
     // Create the output directory
     new File(opts.outputDir.value).mkdirs()
-    
-    // You may define the canopy function in any way you choose, right now if you use more than one function, the canopies must become increasingly general as in the below example.
-    val canopyFunctions = Iterable((a:AuthorMention) => Canopies.fullName(a.self.value),(a:AuthorMention) => Canopies.firstAndLast(a.self.value), (a:AuthorMention) => Canopies.lastAndFirstNofFirst(a.self.value,3))
+
+    // Canopy Functions
+    // Convert the strings into canopy functions (mappings of authors to strings) and then to functions from author mentions to strings
+    val canopyFunctions = opts.canopies.value.map(Canopies.fromString).map(fn => (authorMention: AuthorMention) => fn(authorMention.self.value))
+
+    // Name processor
+    // The name processor to apply to the mentions
+    val nameProcessor = NameProcessor.fromString(opts.nameProcessor.value)
 
     // Initialize the coreference algorithm
-    val parCoref = new ParallelHierarchicalCoref(allWork,db,opts,keystore,canopyFunctions,new File(opts.outputDir.value))
+    val parCoref = new ParallelHierarchicalCoref(allWork,db,opts,keystore,canopyFunctions,new File(opts.outputDir.value),nameProcessor)
 
     // Run the algorithm on all the tasks
     parCoref.runInParallel(opts.numThreads.value)
 
     // Write the timing info
     val timesPW = new PrintWriter(new File(opts.outputDir.value,"timing.txt"))
-    timesPW.println(parCoref.times.map(f => f._1 + "\t" + f._2).mkString(" "))
+    timesPW.println(parCoref.times.map(f => f._1 + "\t" + f._2).mkString("\n"))
     timesPW.close()
 
     // display the timing info
@@ -441,7 +463,7 @@ object MyRunParallel {
 
 Currently, the recommended model parameters for this set up are ```config/coref/DefaultWeightsWithoutTopicsAndKeywords.config```. But please note, this may change in the future. 
 
-The output of the coreference algorithm is a file ```all-results.txt``` in the output directory. This file is a two-column tab separted file with mention ids in the left column and entity ids in the right column:
+The output of the coreference algorithm is a file ```all-results.txt``` in the output directory. This file is a two-column tab separated file with mention ids in the left column and entity ids in the right column:
 
 ```
 A00-1001_LN_Amble_FN_Tore       1
@@ -455,12 +477,18 @@ A00-1005_LN_Bowden_FN_G 8
 A00-1005_LN_Strzalkowski_FN_Tomek       9
 ```
 
+Given a setting file as described above and the model parameters, you may use the shell script ```scripts/coref/run_coref.sh``` to run the algorithm:
+
+```
+bash scripts/coref/run_coref.sh $setting_file $parameter_file
+```
+
+For example:
+
+```
+bash scripts/coref/run_coref.sh config/coref/ParallelCoref.config config/coref/DefaultWeightsWithoutTopicsAndKeywords.config
+```
 
 ## Distributing Coreference ##
 
 The simplest (though perhaps too naive) way to distribute the coreference work is to split up the coref task file into several chunks and to run a parallel coreference job with a different task file on each machine. One machine will run the MongoDB instance-- make sure to specify the name of this machine instead of localhost in the config files. 
-
-
-## Coming Soon ##
-
-Code in this project to generate keywords from text and to learn topics. 

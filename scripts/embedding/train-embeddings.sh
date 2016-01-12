@@ -6,7 +6,7 @@ echo "Training word embeddings"
 START_TIME=$(date +%x_%H:%M:%S:%N)
 START=$(date +%s)
 
-jarpath="target/author_coref-1.0-SNAPSHOT-jar-with-dependencies.jar"
+jarpath="target/author_coref-1.1-SNAPSHOT-jar-with-dependencies.jar"
 training_data="data/embedding/training_data.txt"
 num_threads=20
 output_vocabulary="data/embedding/embedding-vocab.txt"
