@@ -36,6 +36,10 @@ trait MongoDBOpts extends DefaultCmdOptions{
   val collectionName = new CmdOption[String]("collection-name", "The name of the collection", true)
 }
 
-trait KeystoreOpts extends InMemoryHashMapKeystoreOpts {
+trait KeystoreOpts extends InMemoryHashMapKeystoreOpts with CodecCmdOption {
   val caseSensitive = new CmdOption[Boolean]("case-sensitive", true, "BOOLEAN", "Whether or not to make the keystore case sensitive")
+}
+
+trait CanopyOpts extends DefaultCmdOptions {
+  val canopies = new CmdOption[List[String]]("canopies",List("fullName","firstAndLast","lastAndFirst3ofFirst", "lastAndFirst1ofFirst"),"STRINGS", "The blocking rules/canopies to use in order. Specified as strings. See canopy documentation for more information.")
 }

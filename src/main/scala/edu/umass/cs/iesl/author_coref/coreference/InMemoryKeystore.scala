@@ -18,6 +18,7 @@ import java.util
 
 import cc.factorie._
 import edu.umass.cs.iesl.author_coref._
+import edu.umass.cs.iesl.author_coref.utilities.KeystoreOpts
 
 import scala.collection.JavaConverters._
 
@@ -58,6 +59,10 @@ class CaseInsensitiveInMemoryKeystore(map: scala.collection.Map[String,Array[Dou
 
 
 object InMemoryKeystore {
+
+  def fromCmdOpts(opts: KeystoreOpts) = {
+    fromFile(new File(opts.keystorePath.value),opts.keystoreDim.value,opts.keystoreDelim.value,opts.codec.value,opts.caseSensitive.value)
+  }
 
   def fromFile(embeddingFile:File, dimensionality:Int, fileDelimiter:String, codec: String, caseSensitive: Boolean = true) = {
     val _store = new util.HashMap[String,Array[Double]](10000).asScala

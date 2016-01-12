@@ -18,9 +18,15 @@ import java.io.{File, PrintWriter}
 import edu.umass.cs.iesl.author_coref.data_structures.coreference.AuthorMention
 import edu.umass.cs.iesl.author_coref.db.AuthorMentionDB
 import edu.umass.cs.iesl.author_coref.load.LoadCorefTasks
+import edu.umass.cs.iesl.author_coref.utilities._
 
 
-object RunParallelCoreferenceACL {
+class RunParallelOpts extends MongoDBOpts with CodecCmdOption with AuthorCorefModelOptions with KeystoreOpts with CanopyOpts with NumThreads{
+  val corefTaskFile = new CmdOption[String]("coref-task-file", "The file containing the coref tasks", true)
+  val outputDir = new CmdOption[String]("output-dir", "Where to write the output", true)
+}
+
+object RunParallelCoreference {
 
   def main(args: Array[String]): Unit = {
 
@@ -28,7 +34,7 @@ object RunParallelCoreferenceACL {
     val opts = new RunParallelOpts
     opts.parse(args)
 
-    // Load all of the coref tasks into memory, so they can easily be distributed amongst the different threads
+    // Load all of the coref tasks into memory, so they can easily be distributed among the different threads
     val allWork = LoadCorefTasks.load(new File(opts.corefTaskFile.value),opts.codec.value)
 
     // Create the interface to the MongoDB containing the mentions
@@ -41,8 +47,8 @@ object RunParallelCoreferenceACL {
     new File(opts.outputDir.value).mkdirs()
 
     // Canopy Functions
-    //val canopyFunctions = Iterable((a:AuthorMention) => Canopies.fullName(a.self.value),(a:AuthorMention) => Canopies.firstAndLast(a.self.value), (a:AuthorMention) => Canopies.lastAndFirstNofFirst(a.self.value,3))
-    val canopyFunctions = Iterable((a:AuthorMention) => Canopies.fullName(a.self.value),(a:AuthorMention) => Canopies.firstAndLast(a.self.value), (a:AuthorMention) => Canopies.lastAndFirstNofFirst(a.self.value,3), (a:AuthorMention) => Canopies.lastAndFirstNofFirst(a.self.value,1))
+    // Convert the strings into canopy functions (mappings of authors to strings) and then to functions from author mentions to strings
+    val canopyFunctions = opts.canopies.value.map(Canopies.fromString).map(fn => (authorMention: AuthorMention) => fn(authorMention.self.value))
 
     // Initialize the coreference algorithm
     val parCoref = new ParallelHierarchicalCoref(allWork,db,opts,keystore,canopyFunctions,new File(opts.outputDir.value))

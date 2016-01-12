@@ -17,16 +17,22 @@ import edu.umass.cs.iesl.author_coref.data_structures.Author
 
 object Canopies {
 
-  def fullName(author:Author, caseSensitive: Boolean): String = if (caseSensitive) fullName(author) else fullName(author.normalized)
-  
-  def fullName(author: Author): String = "LAST_" + author.lastName.opt.getOrElse("") + "_FIRST_" + author.firstName.opt.getOrElse("") + "_MIDDLE_" + author.middleNames.opt.getOrElse(Seq()).mkString("_")
+  def fullName = (author: Author) => "LAST_" + author.lastName.opt.getOrElse("") + "_FIRST_" + author.firstName.opt.getOrElse("") + "_MIDDLE_" + author.middleNames.opt.getOrElse(Seq()).mkString("_")
 
-  def firstAndLast(author:Author, caseSensitive: Boolean): String = if (caseSensitive) fullName(author) else fullName(author.normalized)
+  def firstAndLast = (author: Author) => "LAST_" + author.lastName.opt.getOrElse("") + "_FIRST_" + author.firstName.opt.getOrElse("")
 
-  def firstAndLast(author: Author): String = "LAST_" + author.lastName.opt.getOrElse("") + "_FIRST_" + author.firstName.opt.getOrElse("")
+  def lastAndFirstNofFirst = (author: Author, n: Int) =>"LAST_" + author.lastName.opt.getOrElse("") + "_FIRST_" + author.firstName.opt.getOrElse("").take(n)
 
-  def lastAndFirstNofFirst(author: Author, n: Int, caseSensitive: Boolean): String = if (caseSensitive) lastAndFirstNofFirst(author,n) else lastAndFirstNofFirst(author.normalized,n)
-
-  def lastAndFirstNofFirst(author: Author, n: Int): String = "LAST_" + author.lastName.opt.getOrElse("") + "_FIRST_" + author.firstName.opt.getOrElse("").take(n)
+  private val lastAndFirstNPattern = "(lastandfirst[0-9]+offirst)".r
+  def fromString(canopyName: String) =
+    canopyName.toLowerCase match {
+    case "fullname" =>
+      fullName
+    case "firstandlast" =>
+      firstAndLast
+    case lastAndFirstNPattern(canopy) =>
+        val num = canopy.replaceAll("[^0-9]","").toInt
+      (author: Author) => lastAndFirstNofFirst(author,num)
+  }
 
 }

@@ -23,7 +23,6 @@ import edu.umass.cs.iesl.author_coref.utilities.KeystoreOpts
 
 class RunRexaOpts extends AuthorCorefModelOptions with KeystoreOpts {
   val rexaDir = new CmdOption[String]("rexa-dir", "The dir containing the rexa files", true)
-  val codec = new CmdOption[String]("codec", "UTF-8", "STRING", "The encoding to use.")
   val outputDir = new CmdOption[String]("output-dir", "Where to write the output", true)
   val numThreads = new CmdOption[Int]("num-threads", 1, "INT", "Number of threads to use")
   val topicsFile = new CmdOption[String]("topics-file", "the topics file", false)
