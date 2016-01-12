@@ -22,6 +22,7 @@ import cc.factorie.util.Threading
 import edu.umass.cs.iesl.author_coref.data_structures.coreference.{AuthorMention, CorefTaskWithMentions, CorefTask}
 import edu.umass.cs.iesl.author_coref.db.Datastore
 import edu.umass.cs.iesl.author_coref.load.LoadTabSeparatedTuples
+import edu.umass.cs.iesl.author_coref.process.{CaseInsensitiveReEvaluatingNameProcessor, NameProcessor}
 
 import scala.collection.JavaConverters._
 import scala.collection.mutable.ArrayBuffer
@@ -48,6 +49,12 @@ trait ParallelCoreference {
     * @return
     */
   def writer: CorefOutputWriter
+
+  /**
+    * The name processor to apply to the mentions (if necessary)
+    * @return
+    */
+  def nameProcessor: NameProcessor
 
   /**
     * Given a task, fetch the algorithm that will be used to run it
@@ -152,12 +159,13 @@ abstract class StandardParallelCoreference(override val allWork: Iterable[CorefT
 
 
 /**
-  * The implementation using multiple canopies (what was submitted)
+  * The implementation using multiple canopies
   * @param allWork - the complete group of tasks
   * @param datastore - the interface to mongo
   * @param opts - the model parameters
   * @param keystore - the embedding lookup table
   * @param canopyFunctions - the canopy functions to use
+  * @param nameProcessor - the name processor to use
   * @param outputDir - where to write the output
   */
 class ParallelHierarchicalCoref(override val allWork: Iterable[CorefTask],
@@ -165,9 +173,10 @@ class ParallelHierarchicalCoref(override val allWork: Iterable[CorefTask],
                                 opts: AuthorCorefModelOptions,
                                 keystore: Keystore,
                                 canopyFunctions: Iterable[(AuthorMention => String)],
-                                outputDir: File) extends StandardParallelCoreference(allWork,datastore,outputDir) {
+                                outputDir: File,
+                                override val nameProcessor: NameProcessor = CaseInsensitiveReEvaluatingNameProcessor) extends StandardParallelCoreference(allWork,datastore,outputDir) {
   override def algorithmFromTask(task: CorefTaskWithMentions): CoreferenceAlgorithm[AuthorMention] = {
-    val alg = new HierarchicalCoreferenceAlgorithm(opts,task.mentions,keystore,canopyFunctions)
+    val alg = new HierarchicalCoreferenceAlgorithm(opts,task.mentions,keystore,canopyFunctions,nameProcessor)
     alg.quietPrintStatements = true
     alg
   }

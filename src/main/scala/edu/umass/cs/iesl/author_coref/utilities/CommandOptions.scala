@@ -43,3 +43,7 @@ trait KeystoreOpts extends InMemoryHashMapKeystoreOpts with CodecCmdOption {
 trait CanopyOpts extends DefaultCmdOptions {
   val canopies = new CmdOption[List[String]]("canopies",List("fullName","firstAndLast","lastAndFirst3ofFirst", "lastAndFirst1ofFirst"),"STRINGS", "The blocking rules/canopies to use in order. Specified as strings. See canopy documentation for more information.")
 }
+
+trait NameProcessorOpts extends DefaultCmdOptions {
+  val nameProcessor = new CmdOption[String]("name-processor", "CaseInsensitiveReEvaluatingNameProcessor","STRING", "The name processor to use in when handling author mentions.")
+}

@@ -18,14 +18,19 @@ import java.io.{File, PrintWriter}
 import edu.umass.cs.iesl.author_coref.data_structures.coreference.AuthorMention
 import edu.umass.cs.iesl.author_coref.db.AuthorMentionDB
 import edu.umass.cs.iesl.author_coref.load.LoadCorefTasks
+import edu.umass.cs.iesl.author_coref.process.NameProcessor
 import edu.umass.cs.iesl.author_coref.utilities._
 
 
-class RunParallelOpts extends MongoDBOpts with CodecCmdOption with AuthorCorefModelOptions with KeystoreOpts with CanopyOpts with NumThreads{
+class RunParallelOpts extends MongoDBOpts with CodecCmdOption with AuthorCorefModelOptions with KeystoreOpts with CanopyOpts with NumThreads with NameProcessorOpts {
   val corefTaskFile = new CmdOption[String]("coref-task-file", "The file containing the coref tasks", true)
   val outputDir = new CmdOption[String]("output-dir", "Where to write the output", true)
 }
 
+/**
+  * A generic use case of the running the hierarchical coreference algorithm using multiple threads
+  * with a database storing author mentions.
+  */
 object RunParallelCoreference {
 
   def main(args: Array[String]): Unit = {
@@ -50,8 +55,12 @@ object RunParallelCoreference {
     // Convert the strings into canopy functions (mappings of authors to strings) and then to functions from author mentions to strings
     val canopyFunctions = opts.canopies.value.map(Canopies.fromString).map(fn => (authorMention: AuthorMention) => fn(authorMention.self.value))
 
+    // Name processor
+    // The name processor to apply to the mentions
+    val nameProcessor = NameProcessor.fromString(opts.nameProcessor.value)
+
     // Initialize the coreference algorithm
-    val parCoref = new ParallelHierarchicalCoref(allWork,db,opts,keystore,canopyFunctions,new File(opts.outputDir.value))
+    val parCoref = new ParallelHierarchicalCoref(allWork,db,opts,keystore,canopyFunctions,new File(opts.outputDir.value),nameProcessor)
 
     // Run the algorithm on all the tasks
     parCoref.runInParallel(opts.numThreads.value)

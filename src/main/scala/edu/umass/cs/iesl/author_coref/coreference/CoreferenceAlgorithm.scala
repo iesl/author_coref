@@ -247,7 +247,12 @@ trait HierarchicalCorefSystem[V <: NodeVariables[V] with MutableSingularCanopy,C
 
 }
 
-
+/**
+  * Standard implementation of hierarchical coreference system trait.
+  * @param opts - the parameter specifications in command line options
+  * @param mentions - the mentions to corefer
+  * @param canopyFunctions - the blocking/canopy functions to use
+  */
 class StandardHCorefSystem(opts: AuthorCorefModelOptions, val mentions: Iterable[Mention[CorefAuthorVars]], override val canopyFunctions: Iterable[AuthorMention => String]) extends HierarchicalCorefSystem[CorefAuthorVars,AuthorMention] {
 
   implicit val random = new Random(0)
@@ -273,6 +278,14 @@ class StandardHCorefSystem(opts: AuthorCorefModelOptions, val mentions: Iterable
 }
 
 
+/**
+  * Perform disambiguation using the hierarchical model
+  * @param opts - feature template parameters stored in command line options
+  * @param rawMentions - the mentions to disambiguate before name processing
+  * @param keystore - the datastructure storing the word embeddings
+  * @param canopyFunctions - the blocking/canopy functions to use
+  * @param nameProcessor - the name processing pipeline to use
+  */
 class HierarchicalCoreferenceAlgorithm(opts: AuthorCorefModelOptions, val rawMentions: Iterable[AuthorMention], keystore: Keystore, canopyFunctions: Iterable[AuthorMention => String], nameProcessor: NameProcessor = CaseInsensitiveReEvaluatingNameProcessor) extends CoreferenceAlgorithm[AuthorMention]  with IndexableMentions[AuthorMention]{
 
   // Apply name processing
@@ -312,6 +325,10 @@ class HierarchicalCoreferenceAlgorithm(opts: AuthorCorefModelOptions, val rawMen
     */
   override def clusterIds: Iterable[(String, String)] = hcorefMentions.map(m => (m.uniqueId,m.entity.uniqueId))
 }
+
+
+
+// Deterministic baseline algorithms below
 
 
 abstract class PairwiseCoreferenceAlgorithm(override val mentions: Iterable[AuthorMention], canopyFunction: AuthorMention => String) extends CoreferenceAlgorithm[AuthorMention] with IndexableMentions[AuthorMention]{

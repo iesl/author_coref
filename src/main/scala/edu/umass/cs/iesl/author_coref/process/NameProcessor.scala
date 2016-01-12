@@ -34,6 +34,10 @@ class CompoundNameProcessor(processors: Iterable[NameProcessor]) extends NamePro
   }
 }
 
+object IdentityNameProcessor extends NameProcessor{
+  def process(name: PersonName): PersonName = name
+}
+
 object FirstNameTrimmer extends NameProcessor {
   override def process(name: PersonName): PersonName = {
     name.firstName.opt.foreach(n => name.firstName.set(n.trimBegEnd()))
@@ -160,8 +164,28 @@ object LowerCaseSuffixes extends NameProcessor {
 
 object LowerCaseAllNames extends CompoundNameProcessor(Iterable(LowerCaseFirstName,LowerCaseMiddleNames,LowerCaseLastName,LowerCaseSuffixes))
 
-object DefaultNameProcessor extends CompoundNameProcessor(Iterable(FirstNameTrimmer,LastNameTrimmer,LastNameSuffixProcessor,LastNameAccentNameProcessor,FirstNameAccentNameProcessor))
-
 object ReEvaluatingNameProcessor extends CompoundNameProcessor(Iterable(FirstNameTrimmer,LastNameTrimmer,LastNameSuffixProcessor,LastNameAccentNameProcessor,FirstNameAccentNameProcessor,FirstMiddleSplitter))
 
 object CaseInsensitiveReEvaluatingNameProcessor extends CompoundNameProcessor(Iterable(FirstNameTrimmer,LastNameTrimmer,LastNameSuffixProcessor,LastNameAccentNameProcessor,FirstNameAccentNameProcessor,FirstNameUnicodeCharacterAccentNameProcessor,LastNameUnicodeCharacterAccentNameProcessor,FirstMiddleSplitter,AlphabeticOnlyAllNamesProcessor,LowerCaseAllNames))
+
+/**
+  * Object to retrieve a name processor based on a string
+  */
+object NameProcessor {
+  /**
+    * Return the name processor associated with each string name. Matching is
+    * case insensitive and ignores the "nameprocessor" part of the name
+    *
+    *   1) "identity" - a name processor which does nothing at all
+    *   2) "CaseInsensitiveReEvaluatingNameProcessor" - normalizes names and might change middle & last names according to punctuation/spacing
+    *   3) "LowerCaseAllNames" - lowercases the first, middle and last names
+    *   4) "ReEvaluatingNameProcessor" - normalizes accent characters but keeps names case sensitive. might change middle & last names according to punctuation/spacing
+    * @param string
+    */
+  def fromString(string: String):NameProcessor = string.toLowerCase.replaceAll("nameprocessor","") match {
+    case "identity" => IdentityNameProcessor
+    case "caseinsensitivereevaluating" => CaseInsensitiveReEvaluatingNameProcessor
+    case "lowercaseallnames" => LowerCaseAllNames
+    case "reevaluatingnameprocessor" => ReEvaluatingNameProcessor
+  }
+}
