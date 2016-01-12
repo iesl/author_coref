@@ -27,6 +27,6 @@ object Canopies {
 
   def lastAndFirstNofFirst(author: Author, n: Int, caseSensitive: Boolean): String = if (caseSensitive) lastAndFirstNofFirst(author,n) else lastAndFirstNofFirst(author.normalized,n)
 
-  def lastAndFirstNofFirst(author: Author, n: Int): String = "LAST_" + author.lastName.opt.getOrElse("") + "_FIRST_" + author.firstName.opt.getOrElse("").slice(0,n)
+  def lastAndFirstNofFirst(author: Author, n: Int): String = "LAST_" + author.lastName.opt.getOrElse("") + "_FIRST_" + author.firstName.opt.getOrElse("").take(n)
 
 }
