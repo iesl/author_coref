@@ -21,4 +21,5 @@ trait CorefMention extends CubbieWithHTMLFormatting {
 
   def entityId: StringSlot = new StringSlot("entityId")
 
+  def goldEntityId: StringSlot = new StringSlot("goldEntityId")
 }
