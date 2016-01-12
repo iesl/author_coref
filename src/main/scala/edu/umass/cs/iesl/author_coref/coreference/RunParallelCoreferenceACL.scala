@@ -19,7 +19,10 @@ import edu.umass.cs.iesl.author_coref.data_structures.coreference.AuthorMention
 import edu.umass.cs.iesl.author_coref.db.AuthorMentionDB
 import edu.umass.cs.iesl.author_coref.load.LoadCorefTasks
 
-
+/**
+  * This was used in running coreference on ACL papers. Another example of running using multiple threads and a mongodb
+  * backend database.
+  */
 object RunParallelCoreferenceACL {
 
   def main(args: Array[String]): Unit = {

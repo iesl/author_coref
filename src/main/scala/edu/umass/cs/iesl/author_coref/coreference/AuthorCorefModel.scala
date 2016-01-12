@@ -18,11 +18,20 @@ import cc.factorie.util.DefaultCmdOptions
 import edu.umass.cs.iesl.author_coref.data_structures.coreference.CorefAuthorVars
 
 
-// Modified from Factorie to use CorefAuthorVars
-
+/**
+  * The AuthorCorefModel defines a "TemplateModel" in factorie. The model determines which
+  * templates are used in the hierarchical coreference model. Templates can be added
+  * to the model using "+=".
+  */
 class AuthorCorefModel extends CorefModel[CorefAuthorVars] with DebuggableModel[CorefAuthorVars]
 
 object AuthorCorefModel {
+
+  /**
+    * Generates a model with parameters based on the command line options.
+    * @param opts - the command line options storing the model parameters
+    * @return
+    */
   def fromCmdOptions(opts:AuthorCorefModelOptions):AuthorCorefModel = {
     implicit val authorCorefModel = new AuthorCorefModel
 
@@ -83,7 +92,10 @@ object AuthorCorefModel {
 }
 
 
-
+/**
+  * The command line options for the author coreference model used to determine the weights of the
+  * templates in the model.
+  */
 trait AuthorCorefModelOptions extends DefaultCmdOptions {
 
   // Author information

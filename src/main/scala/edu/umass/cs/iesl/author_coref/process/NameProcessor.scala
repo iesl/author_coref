@@ -186,6 +186,6 @@ object NameProcessor {
     case "identity" => IdentityNameProcessor
     case "caseinsensitivereevaluating" => CaseInsensitiveReEvaluatingNameProcessor
     case "lowercaseallnames" => LowerCaseAllNames
-    case "reevaluatingnameprocessor" => ReEvaluatingNameProcessor
+    case "reevaluating" => ReEvaluatingNameProcessor
   }
 }

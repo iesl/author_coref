@@ -24,6 +24,10 @@ import scala.collection.JavaConverters._
 
 // Modified from factorie to remove the "missing keys" feature.
 
+/**
+  * Data structure storing word embeddings retrievable by string.
+  * Below are in memory implementations with a both case sensitive and case insensitive option.
+  */
 trait Keystore {
   def dimensionality:Int
   def retrieve(key:String):Option[Array[Double]]

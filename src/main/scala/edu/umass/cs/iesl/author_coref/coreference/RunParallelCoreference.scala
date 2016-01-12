@@ -55,9 +55,13 @@ object RunParallelCoreference {
     // Convert the strings into canopy functions (mappings of authors to strings) and then to functions from author mentions to strings
     val canopyFunctions = opts.canopies.value.map(Canopies.fromString).map(fn => (authorMention: AuthorMention) => fn(authorMention.self.value))
 
+    println(s"[RunParallelCoreference] Using the following canopies: ${opts.canopies.value.mkString(", ")}")
+
     // Name processor
     // The name processor to apply to the mentions
     val nameProcessor = NameProcessor.fromString(opts.nameProcessor.value)
+
+    println(s"[RunParallelCoreference] Using the following name processor: ${opts.nameProcessor.value}")
 
     // Initialize the coreference algorithm
     val parCoref = new ParallelHierarchicalCoref(allWork,db,opts,keystore,canopyFunctions,new File(opts.outputDir.value),nameProcessor)

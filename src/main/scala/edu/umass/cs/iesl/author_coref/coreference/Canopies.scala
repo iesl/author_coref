@@ -15,6 +15,9 @@ package edu.umass.cs.iesl.author_coref.coreference
 
 import edu.umass.cs.iesl.author_coref.data_structures.Author
 
+/**
+  * Functions to determine the canopy/block for a particular author
+  */
 object Canopies {
 
   def fullName = (author: Author) => "LAST_" + author.lastName.opt.getOrElse("") + "_FIRST_" + author.firstName.opt.getOrElse("") + "_MIDDLE_" + author.middleNames.opt.getOrElse(Seq()).mkString("_")
@@ -24,6 +27,19 @@ object Canopies {
   def lastAndFirstNofFirst = (author: Author, n: Int) =>"LAST_" + author.lastName.opt.getOrElse("") + "_FIRST_" + author.firstName.opt.getOrElse("").take(n)
 
   private val lastAndFirstNPattern = "(lastandfirst[0-9]+offirst)".r
+
+  /**
+    * Return the canopy function associated with a given string. There are three
+    * possible canopy functions which can be used:
+    *   1) "fullName" - returns the fullName canopy function, consisting of the author's first, middle and last names
+    *   2) "firstAndLast" - returns the firstAndLast canopy function, consisting of the author's first and last name
+    *   3) "lastAndFirst[0-9]+ofFirst" - returns the lastAndFirstNofFirst, consisting of the authors last name and first
+    *     N characters of the author's first name, where N is the number specified in string.
+    *     For example "lastAndFirst2ofFirst" gives the first two characters of the first name
+    *     and "lastAndFirst5ofFirst" gives the first five characters of the first name.
+    * @param canopyName - the string representation of the canopy
+    * @return
+    */
   def fromString(canopyName: String) =
     canopyName.toLowerCase match {
     case "fullname" =>
