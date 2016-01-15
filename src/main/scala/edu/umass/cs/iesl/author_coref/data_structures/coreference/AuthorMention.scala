@@ -88,9 +88,9 @@ class AuthorMention extends CorefMention {
   val source = new StringSlot("source")
 
 
-  def coAuthorStrings: Iterable[String] = coauthors.opt.getOrElse(Iterable()).map(_.normalized.formattedString)
+  def coAuthorStrings: Iterable[String] = coauthors.opt.getOrElse(Iterable()).map(_.normalized.formattedString).filter(_.nonEmpty)
 
-  def venueStrings = venues.opt.getOrElse(Iterable()).flatMap(_.name.opt)
+  def venueStrings = venues.opt.getOrElse(Iterable()).flatMap(_.name.opt).filter(_.nonEmpty)
 
 
   def toAuthorVars(keystore: Keystore): CorefAuthorVars = {
@@ -102,11 +102,11 @@ class AuthorMention extends CorefMention {
     val institutionsBag = new BagOfWordsVariable()
 
     self.opt.foreach (a => {
-      a.firstName.opt.foreach(f => firstNames += f)
-      a.middleNames.opt.foreach(m => middleNames ++= m)
-      a.lastName.opt.foreach(l => lastNames += l)
-      a.emails.opt.foreach(e => emailsBag ++= e)
-      a.institutions.opt.foreach(i => institutionsBag ++= i)
+      a.firstName.opt.filter(_.nonEmpty).foreach(f => firstNames += f)
+      a.middleNames.opt.foreach(m => middleNames ++= m.filter(_.nonEmpty))
+      a.lastName.opt.filter(_.nonEmpty).foreach(l => lastNames += l)
+      a.emails.opt.foreach(e => emailsBag ++= e.filter(_.nonEmpty))
+      a.institutions.opt.foreach(i => institutionsBag ++= i.filter(_.nonEmpty))
     })
     
     // Title embedding
@@ -116,18 +116,18 @@ class AuthorMention extends CorefMention {
     
     // Topics
     val topicsBag = new BagOfWordsVariable()
-    topicsBag ++= topics.opt.getOrElse(Iterable())
+    topicsBag ++= topics.opt.getOrElse(Iterable()).filter(_.nonEmpty)
 
     // Text 
     val tokenizedTextBag =  new BagOfWordsVariable()
-    tokenizedTextBag ++= tokenizedText.opt.getOrElse(Iterable())
+    tokenizedTextBag ++= tokenizedText.opt.getOrElse(Iterable()).filter(_.nonEmpty)
 
     // No text embedding for now
     val textEmbeddingKeywordsBag = new DenseDoubleBagVariable(keystore.dimensionality)
 
     // keywords
     val keywordsBag = new BagOfWordsVariable()
-    keywordsBag ++= keywords.opt.getOrElse(Iterable())
+    keywordsBag ++= keywords.opt.getOrElse(Iterable()).filter(_.nonEmpty)
 
     // venues
     val venuesBag = new BagOfWordsVariable()

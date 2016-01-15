@@ -15,15 +15,14 @@ package edu.umass.cs.iesl.author_coref.experiment
 
 import java.io.File
 
-import cc.factorie.app.bib.hcoref.InMemoryHashMapKeystoreOpts
 import edu.umass.cs.iesl.author_coref.coreference._
 import edu.umass.cs.iesl.author_coref.data_structures.coreference._
 import edu.umass.cs.iesl.author_coref.db.{GenerateAuthorMentionsFromRexa, KeywordsDB, TopicsDB}
 import edu.umass.cs.iesl.author_coref.load.{LoadKeywords, LoadRexa, LoadTopics}
+import edu.umass.cs.iesl.author_coref.utilities.KeystoreOpts
 
-class RunRexaOpts extends AuthorCorefModelOptions with InMemoryHashMapKeystoreOpts {
+class RunRexaOpts extends AuthorCorefModelOptions with KeystoreOpts {
   val rexaDir = new CmdOption[String]("rexa-dir", "The dir containing the rexa files", true)
-  val codec = new CmdOption[String]("codec", "UTF-8", "STRING", "The encoding to use.")
   val outputDir = new CmdOption[String]("output-dir", "Where to write the output", true)
   val numThreads = new CmdOption[Int]("num-threads", 1, "INT", "Number of threads to use")
   val topicsFile = new CmdOption[String]("topics-file", "the topics file", false)
@@ -40,10 +39,10 @@ object RunRexa {
 
     println("Loading the topics database")
     val topicsDB = if (opts.topicsFile.wasInvoked) LoadTopics.load(new File(opts.topicsFile.value),opts.codec.value) else new TopicsDB(Map())
-    val keywordsDB = if (opts.topicsFile.wasInvoked) LoadKeywords.load(new File(opts.keywordsFile.value),opts.codec.value) else new KeywordsDB(Map())
+    val keywordsDB = if (opts.keywordsFile.wasInvoked) LoadKeywords.load(new File(opts.keywordsFile.value),opts.codec.value) else new KeywordsDB(Map())
 
     val mentions = LoadRexa.fromDir(new File(opts.rexaDir.value), opts.codec.value)
-    val authorMentions = GenerateAuthorMentionsFromRexa.processAll(mentions,topicsDB,keywordsDB)
+    val authorMentions = GenerateAuthorMentionsFromRexa.processAll(mentions,topicsDB,keywordsDB).toIndexedSeq
     val keystore = InMemoryKeystore.fromFile(new File(opts.keystorePath.value),opts.keystoreDim.value,opts.keystoreDelim.value,opts.codec.value)
 
     val canopyFunctions = Iterable((a:AuthorMention) => a.canopy.value)
@@ -73,7 +72,7 @@ object RunRexaDeterministicBaseline {
 
     println("Loading the topics database")
     val topicsDB = if (opts.topicsFile.wasInvoked) LoadTopics.load(new File(opts.topicsFile.value),opts.codec.value) else new TopicsDB(Map())
-    val keywordsDB = if (opts.topicsFile.wasInvoked) LoadKeywords.load(new File(opts.keywordsFile.value),opts.codec.value) else new KeywordsDB(Map())
+    val keywordsDB = if (opts.keywordsFile.wasInvoked) LoadKeywords.load(new File(opts.keywordsFile.value),opts.codec.value) else new KeywordsDB(Map())
 
     val mentions = LoadRexa.fromDir(new File(opts.rexaDir.value), opts.codec.value)
     val authorMentions = GenerateAuthorMentionsFromRexa.processAll(mentions,topicsDB,keywordsDB)

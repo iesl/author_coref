@@ -5,7 +5,7 @@ import java.io._
 import cc.factorie.util.JsonCubbieConverter
 import edu.umass.cs.iesl.author_coref.data_structures.coreference.AuthorMention
 import edu.umass.cs.iesl.author_coref.db.{EmptyDataStore, GenerateAuthorMentionsFromACL}
-import edu.umass.cs.iesl.author_coref.load.{LoadACL, LoadKeywords, LoadTopics}
+import edu.umass.cs.iesl.author_coref.load._
 import edu.umass.cs.iesl.author_coref.utilities.{CodecCmdOption, NumThreads}
 
 object WriteAuthorMentionsToJSON {
@@ -69,6 +69,28 @@ object WriteAuthorMentionsToJSONFromACL {
     // Convert into AuthorMentions
     val authorMentions = GenerateAuthorMentionsFromACL.processAll(aclMentions,topicsDB,keywordsDB)
     WriteAuthorMentionsToJSON.write(authorMentions,new File(opts.outputFile.value),opts.codec.value,opts.bufferSize.value)
+  }
+
+}
+
+class WriteAuthorMentionsToJSONFromBibtexOpts extends CodecCmdOption with NumThreads {
+  val outputFile = new CmdOption[String]("output-file", "The file to write the JSON records to.", true)
+  val bufferSize = new CmdOption[Int]("buffer-size", 1000, "INT", "The size of the buffer to use")
+  val inputDir = new CmdOption[String]("input-dir", "The directory the bibtex files", true)
+  val oneMentionPerFile = new CmdOption[Boolean]("one-mention-per-file", "Supported Bibtex formats: 1) record per file 2) more than one record per file. For (1), the mention ids are the filenames, for (2) they are unique integers")
+}
+
+
+object WriteAuthorMentionsToJSONFromBibtex {
+
+  def main(args: Array[String]): Unit = {
+    val opts = new WriteAuthorMentionsToJSONFromBibtexOpts
+    opts.parse(args)
+    val loader = if (opts.oneMentionPerFile.value) new LoadBibtexSingleRecordPerFile else new LoadBibtex
+    val filenames = new File(opts.inputDir.value).list().filterNot(_.startsWith("\\.")).map(new File(opts.inputDir.value,_).getAbsolutePath)
+    val groupedFilenames = filenames.grouped(filenames.length / opts.numThreads.value).toIterable
+    val groupedMentions = groupedFilenames.flatMap(g => loader.fromFilenames(g.toIterator,opts.codec.value))
+    WriteAuthorMentionsToJSON.write(groupedMentions.toIterator,new File(opts.outputFile.value),opts.codec.value,opts.bufferSize.value)
   }
 
 }

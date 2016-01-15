@@ -13,6 +13,7 @@
 
 package edu.umass.cs.iesl.author_coref.utilities
 
+import cc.factorie.app.bib.hcoref.InMemoryHashMapKeystoreOpts
 import cc.factorie.util.DefaultCmdOptions
 
 
@@ -33,4 +34,16 @@ trait MongoDBOpts extends DefaultCmdOptions{
   val port = new CmdOption[Int]("port", "The port of the mongo server", true)
   val dbname = new CmdOption[String]("dbname", "The name of the database", true)
   val collectionName = new CmdOption[String]("collection-name", "The name of the collection", true)
+}
+
+trait KeystoreOpts extends InMemoryHashMapKeystoreOpts with CodecCmdOption {
+  val caseSensitive = new CmdOption[Boolean]("case-sensitive", true, "BOOLEAN", "Whether or not to make the keystore case sensitive")
+}
+
+trait CanopyOpts extends DefaultCmdOptions {
+  val canopies = new CmdOption[List[String]]("canopies",List("fullName","firstAndLast","lastAndFirst3ofFirst", "lastAndFirst1ofFirst"),"STRINGS", "The blocking rules/canopies to use in order. Specified as strings. See canopy documentation for more information.")
+}
+
+trait NameProcessorOpts extends DefaultCmdOptions {
+  val nameProcessor = new CmdOption[String]("name-processor", "CaseInsensitiveReEvaluatingNameProcessor","STRING", "The name processor to use in when handling author mentions.")
 }

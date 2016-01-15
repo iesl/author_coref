@@ -15,14 +15,14 @@ package edu.umass.cs.iesl.author_coref.embedding
 
 import java.io.File
 
-import cc.factorie.app.bib.hcoref.InMemoryHashMapKeystoreOpts
 import edu.umass.cs.iesl.author_coref.coreference.InMemoryKeystore
+import edu.umass.cs.iesl.author_coref.utilities.KeystoreOpts
 
 /**
  * Given a plain text file of embeddings. This executable lets you browse the nearest neighbors
  * of words in the embedding space using an interactive prompt. *
  */
-class BrowseEmbeddingsOpts extends InMemoryHashMapKeystoreOpts
+class BrowseEmbeddingsOpts extends KeystoreOpts
 
 object BrowseEmbeddings {
 
@@ -31,7 +31,7 @@ object BrowseEmbeddings {
     val opts = new BrowseEmbeddingsOpts
     opts.parse(args)
 
-    val keystore = InMemoryKeystore.fromFile(new File(opts.keystorePath.value)," ", "UTF-8")
+    val keystore = InMemoryKeystore.fromFileContainingDim(new File(opts.keystorePath.value)," ", "UTF-8")
 
     println("Use CTRL-C to quit")
     val done = false

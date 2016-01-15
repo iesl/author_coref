@@ -18,11 +18,16 @@ import java.util
 
 import cc.factorie._
 import edu.umass.cs.iesl.author_coref._
+import edu.umass.cs.iesl.author_coref.utilities.KeystoreOpts
 
 import scala.collection.JavaConverters._
 
 // Modified from factorie to remove the "missing keys" feature.
 
+/**
+  * Data structure storing word embeddings retrievable by string.
+  * Below are in memory implementations with a both case sensitive and case insensitive option.
+  */
 trait Keystore {
   def dimensionality:Int
   def retrieve(key:String):Option[Array[Double]]
@@ -52,10 +57,18 @@ class InMemoryKeystore(map: scala.collection.Map[String,Array[Double]]) extends 
   }
 }
 
+class CaseInsensitiveInMemoryKeystore(map: scala.collection.Map[String,Array[Double]]) extends InMemoryKeystore(map.map(f => f._1.toLowerCase -> f._2)) {
+  override def retrieve(key: String): Option[Array[Double]] = map.get(key.toLowerCase)
+}
+
 
 object InMemoryKeystore {
 
-  def fromFile(embeddingFile:File, dimensionality:Int, fileDelimiter:String, codec: String) = {
+  def fromCmdOpts(opts: KeystoreOpts) = {
+    fromFile(new File(opts.keystorePath.value),opts.keystoreDim.value,opts.keystoreDelim.value,opts.codec.value,opts.caseSensitive.value)
+  }
+
+  def fromFile(embeddingFile:File, dimensionality:Int, fileDelimiter:String, codec: String, caseSensitive: Boolean = true) = {
     val _store = new util.HashMap[String,Array[Double]](10000).asScala
 
     new BufferedReader(new InputStreamReader(new FileInputStream(embeddingFile),codec)).toIterator.foreach {
@@ -68,10 +81,10 @@ object InMemoryKeystore {
           println(s"[${this.getClass.getSimpleName}] WARNING: error reading line: $line")
         }
     }
-    new InMemoryKeystore(_store)
+    if (caseSensitive) new InMemoryKeystore(_store) else new CaseInsensitiveInMemoryKeystore(_store)
   }
 
-  def fromFile(embeddingFile: File, fileDelimiter: String, codec: String) = {
+  def fromFileContainingDim(embeddingFile: File, fileDelimiter: String, codec: String, caseSensitive: Boolean = true) = {
 
     val lines = new BufferedReader(new InputStreamReader(new FileInputStream(embeddingFile),codec)).toIterator
     val Array(numItems,dimensionality) = lines.next().split(fileDelimiter).map(_.toInt)
@@ -87,7 +100,7 @@ object InMemoryKeystore {
           println(s"[${this.getClass.getSimpleName}] WARNING: error reading line: $line")
         }
     }
-    new InMemoryKeystore(_store)
+    if (caseSensitive) new InMemoryKeystore(_store) else new CaseInsensitiveInMemoryKeystore(_store)
 
   }
 }

@@ -8,7 +8,7 @@ package edu.umass.cs.iesl.author_coref.data_structures.coreference
 * @param ids - the ids in the task
 */
 case class CorefTask(name: String, ids: Iterable[String]) {
-  assert(!name.contains("\t"), "The task name must not contain a tab")
+  assert(!name.contains("\t"), s"The task name must not contain a tab. The invalid name was $name")
   assert(!ids.exists(_.contains(",")), "None of the ids may contain commas")
   override def toString: String = {
     name + "\t" + ids.mkString(",")

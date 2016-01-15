@@ -11,15 +11,14 @@
    See the License for the specific language governing permissions and
    limitations under the License. */
 
-package edu.umass.cs.iesl.author_coref.data_structures.coreference
+package edu.umass.cs.iesl.author_coref.utilities
 
-import edu.umass.cs.iesl.author_coref.data_structures.CubbieWithHTMLFormatting
+trait QuietPrint {
 
-trait CorefMention extends CubbieWithHTMLFormatting {
+  var quietPrintStatements:Boolean = false
 
-  def mentionId: StringSlot = new StringSlot("mentionId")
+  def quietPrintln(s: String) = if (!quietPrintStatements) scala.Predef.println(s)
 
-  def entityId: StringSlot = new StringSlot("entityId")
-
-  def goldEntityId: StringSlot = new StringSlot("goldEntityId")
+  def quietPrintln() = if (!quietPrintStatements) scala.Predef.println()
 }
+

@@ -17,57 +17,62 @@ import edu.umass.cs.iesl.author_coref._
 import edu.umass.cs.iesl.author_coref.data_structures.coreference.AuthorMention
 import edu.umass.cs.iesl.author_coref.data_structures.{Author, RexaAuthorMention}
 
+import scala.collection.mutable.ArrayBuffer
+
 // Creates the author mention from the rexa data structures
 object GenerateAuthorMentionsFromRexa {
 
   def processAll(mentions: Iterable[RexaAuthorMention], topicsDatastore: Datastore[String,String], keywordsDatastore: Datastore[String, String]) = mentions.map(processSingle(_,topicsDatastore,keywordsDatastore))
-  
+
   def processSingle(mention: RexaAuthorMention, topicsDatastore: Datastore[String,String], keywordsDatastore: Datastore[String, String]) = {
-    
+
     val authorMention = new AuthorMention()
-    
+
     // Set the ID 
     authorMention.mentionId.set(mention.id)
-    
+    authorMention.goldEntityId.set(mention.groundTruth)
+
     // Set the canopy
     authorMention.canopy.set(mention.canopy)
     authorMention.canopies.set(Seq(mention.canopy))
-        
+
     // Create the author in focus
     val authorInFocus = mention.author_in_focus.getOrElse(new Author("", Seq(), "")).normalized
     // set the emails and institutions
     authorInFocus.emails.set(mention.emails.map(_.trimBegEnd()).filter(_.nonEmpty).toSeq)
     authorInFocus.institutions.set(mention.institutions.map(_.trimBegEnd()).filter(_.nonEmpty).toSeq)
-    
+
     authorMention.self.set(authorInFocus)
-    
+
     // Co authors
-    val coauthors = (mention.authorlist ++ mention.alt_authorlist).filterNot(authorInFocus == _).map(_.normalized).filterNot(_.isEmpty).toSet.toSeq
-    authorMention.coauthors.set(coauthors)
-        
+    val coauthors = (mention.authorlist ++ mention.alt_authorlist).map(_.normalized).filterNot(_.isEmpty).filterNot(authorInFocus.equals)
+    val nonDuplicates = new ArrayBuffer[Author](coauthors.size)
+    coauthors.foreach(c => if (!nonDuplicates.exists(c.equals)) nonDuplicates += c )
+    authorMention.coauthors.set(nonDuplicates)
+
     // Title
-    if (mention.title.isDefined) 
+    if (mention.title.isDefined)
       authorMention.title.set(mention.title)
     else
       authorMention.title.set(mention.altTitle)
-    
+
     // Title Embedding keywords
     val titleEmbeddingKeywords = (if (mention.title.isDefined) mention.title else mention.altTitle).map(_.split("\\s+")).getOrElse(Array()).toIterable.filter(_.nonEmpty).map(_.removePunctuation().toLowerCase)
     authorMention.titleEmbeddingKeywords.set(titleEmbeddingKeywords.toSeq)
-    
+
     // Discrete Topics
     val topics = topicsDatastore.get(mention.id)
     authorMention.topics.set(topics.toSeq)
 
-    // Text 
+    // Text
     val text = mention.abstractText.getOrElse("").trim.noneIfEmpty //+ " " + mention.body.getOrElse("")
     authorMention.text.set(text)
-    
+
     // Tokenized Text
     val tokenizedText = text.getOrElse("").toLowerCase.removePunctuation(" ").split(" ").filter(_.nonEmpty)
     authorMention.tokenizedText.set(tokenizedText)
-    
-    // Keywords 
+
+    // Keywords
     val foundKeywords = keywordsDatastore.get(mention.id)
     authorMention.keywords.set((mention.keyword ++ foundKeywords).map(_.trimBegEnd()).filter(_.nonEmpty).toSeq)
 
@@ -75,9 +80,9 @@ object GenerateAuthorMentionsFromRexa {
     if (authorInFocus.isEmpty) {
       println(s"[${this.getClass.getCanonicalName}] WARNING: Empty Author in focus for mention: ${mention.id}")
     }
-    
+
     authorMention
   }
-  
+
 
 }

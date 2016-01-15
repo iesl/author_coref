@@ -1,7 +1,7 @@
 #!/bin/sh
 
 
-jarpath="target/author_coref-1.0-SNAPSHOT-jar-with-dependencies.jar"
+jarpath="target/author_coref-1.1-SNAPSHOT-jar-with-dependencies.jar"
 
 
 settingsConf=${1:-config/coref/ACLCoref.config}

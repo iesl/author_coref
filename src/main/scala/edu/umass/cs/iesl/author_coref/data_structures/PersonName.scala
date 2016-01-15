@@ -11,15 +11,13 @@
    See the License for the specific language governing permissions and
    limitations under the License. */
 
-package edu.umass.cs.iesl.author_coref.data_structures.coreference
+package edu.umass.cs.iesl.author_coref.data_structures
 
-import edu.umass.cs.iesl.author_coref.data_structures.CubbieWithHTMLFormatting
+trait PersonName extends CubbieWithHTMLFormatting{
 
-trait CorefMention extends CubbieWithHTMLFormatting {
+  val firstName = new StringSlot("firstName")
+  val middleNames = new StringListSlot("middleNames")
+  val lastName = new StringSlot("lastName")
+  val suffixes = new StringListSlot("suffixes")
 
-  def mentionId: StringSlot = new StringSlot("mentionId")
-
-  def entityId: StringSlot = new StringSlot("entityId")
-
-  def goldEntityId: StringSlot = new StringSlot("goldEntityId")
 }

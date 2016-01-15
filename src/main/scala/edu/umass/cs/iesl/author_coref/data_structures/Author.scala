@@ -13,14 +13,12 @@
 
 package edu.umass.cs.iesl.author_coref.data_structures
 
+import cc.factorie.app.bib.parser.Dom
 import org.apache.commons.lang3.StringUtils._
 
 
-class Author extends CubbieWithHTMLFormatting {
+class Author extends PersonName {
   
-  val firstName = new StringSlot("firstName")
-  val middleNames = new StringListSlot("middleNames")
-  val lastName = new StringSlot("lastName")
   val emails = new StringListSlot("emails")
   val institutions = new StringListSlot("institutions")
 
@@ -56,7 +54,7 @@ class Author extends CubbieWithHTMLFormatting {
       false
 
     val sameMiddles = if (middleNames.isDefined && other.middleNames.isDefined)
-      middleNames.value == other.middleNames.value
+      middleNames.value.toSet equals  other.middleNames.value.toSet
     else if (!middleNames.isDefined && !other.middleNames.isDefined)
       true
     else
@@ -85,5 +83,12 @@ object AuthorName {
    * @return - normalized version
    */
   def normalize(nameString: String) = stripAccents(nameString.toLowerCase.trim).replaceAll("""\s+""", " ")
+
+  def apply(domName: Dom.Name): Author = {
+    val author = new Author(clean(domName.first),clean(domName.von).split(" "),clean(domName.last))
+    author
+  }
+
+  def clean(name: String) = name.replaceAll("\t|\n", " ")
 
 }

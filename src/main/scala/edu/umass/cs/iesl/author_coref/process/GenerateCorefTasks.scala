@@ -19,8 +19,8 @@ import java.util
 import edu.umass.cs.iesl.author_coref.coreference.Canopies
 import edu.umass.cs.iesl.author_coref.data_structures.coreference.{AuthorMention, CorefTask}
 import edu.umass.cs.iesl.author_coref.db.{EmptyDataStore, GenerateAuthorMentionsFromACL}
-import edu.umass.cs.iesl.author_coref.load.{LoadACL, LoadJSONAuthorMentions}
-import edu.umass.cs.iesl.author_coref.utilities.{CodecCmdOption, NumThreads}
+import edu.umass.cs.iesl.author_coref.load.{LoadBibtex, LoadBibtexSingleRecordPerFile, LoadACL, LoadJSONAuthorMentions}
+import edu.umass.cs.iesl.author_coref.utilities.{CanopyOpts, NameProcessorOpts, CodecCmdOption, NumThreads}
 
 import scala.collection.JavaConverters._
 import scala.collection.mutable.ArrayBuffer
@@ -28,12 +28,12 @@ import scala.io.Source
 
 object GenerateCorefTasks {
   
-  def fromMultiple(mentionStreams: Iterable[Iterator[AuthorMention]], assignment: AuthorMention => String, ids: Set[String]) = {
+  def fromMultiple(mentionStreams: Iterable[Iterator[AuthorMention]], assignment: AuthorMention => String, ids: Set[String], nameProcessor: NameProcessor = CaseInsensitiveReEvaluatingNameProcessor) = {
     @volatile var maps = new ArrayBuffer[Map[String,Iterable[String]]]()
     mentionStreams.par.foreach{
       mentions =>
-        val r = assignmentMap(canopyAssignments(mentions.filter(p => ids.isEmpty || ids.contains(p.mentionId.value)), assignment))
-        maps += r
+        val r = assignmentMap(canopyAssignments(mentions.filter(p => ids.isEmpty || ids.contains(p.mentionId.value)), assignment,nameProcessor))
+        synchronized {maps += r}
     }
     mergeMaps(maps)
   }
@@ -48,8 +48,8 @@ object GenerateCorefTasks {
     pw.close()
   }
 
-  def canopyAssignments(mentions: Iterator[AuthorMention], assignment: AuthorMention => String) = {
-    mentions.map(f => (assignment(f),f.mentionId.value))
+  def canopyAssignments(mentions: Iterator[AuthorMention], assignment: AuthorMention => String,nameProcessor: NameProcessor) = {
+    mentions.map(f => {nameProcessor.process(f.self.value); (assignment(f),f.mentionId.value)})
   }
 
   def assignmentMap(assignments: Iterator[(String,String)]) =
@@ -70,7 +70,7 @@ object GenerateCorefTasks {
 
 }
 
-class GenerateCorefTasksOpts extends CodecCmdOption with NumThreads {
+class GenerateCorefTasksOpts extends CodecCmdOption with NumThreads with NameProcessorOpts with CanopyOpts {
   val idRestrictionsFile = new CmdOption[String]("id-restrictions-file", "Invoke this command option to restrict the ids used to the ones in this file. One id per line", false)
   val outputFile = new CmdOption[String]("output-file", "Where to write the output", true)
 }
@@ -113,9 +113,33 @@ object GenerateCorefTasksFromJSON {
     val opts = new GenerateCorefTasksFromJSONOpts()
     opts.parse(args)
     val mentions = LoadJSONAuthorMentions.loadMultiple(new File(opts.jsonFile.value),opts.codec.value,opts.numThreads.value)
-    val canopyAssignment = (a: AuthorMention) => Canopies.lastAndFirstNofFirst(a.self.value,3)
+    val canopyAssignment = opts.canopies.value.map(Canopies.fromString).map(fn => (authorMention: AuthorMention) => fn(authorMention.self.value)).last
     val ids = if (opts.idRestrictionsFile.wasInvoked) Source.fromFile(opts.idRestrictionsFile.value,opts.codec.value).getLines().toIterable.toSet[String] else Set[String]()
-    val tasks = GenerateCorefTasks.fromMultiple(mentions,canopyAssignment,ids)
+    val nameProcessor = NameProcessor.fromString(opts.nameProcessor.value)
+    val tasks = GenerateCorefTasks.fromMultiple(mentions,canopyAssignment,ids,nameProcessor)
     GenerateCorefTasks.writeToFile(tasks,new File(opts.outputFile.value))
+  }
+}
+
+class GenerateCorefTasksFromBibtexOpts extends GenerateCorefTasksOpts with CodecCmdOption with NumThreads {
+  val inputDir = new CmdOption[String]("input-dir", "The input directory containing the bibtex records", true)
+  val oneMentionPerFile = new CmdOption[Boolean]("one-mention-per-file", "Supported Bibtex formats: 1) record per file 2) more than one record per file. For (1), the mention ids are the filenames, for (2) they are unique integers")
+}
+
+object GenerateCorefTasksFromBibtex {
+
+  def main(args: Array[String]): Unit = {
+    val opts = new GenerateCorefTasksFromBibtexOpts
+    opts.parse(args)
+    val canopyAssignment = opts.canopies.value.map(Canopies.fromString).map(fn => (authorMention: AuthorMention) => fn(authorMention.self.value)).last
+    val loader = if (opts.oneMentionPerFile.value) new LoadBibtexSingleRecordPerFile else new LoadBibtex
+    val filenames = new File(opts.inputDir.value).list().filterNot(_.startsWith("\\.")).map(new File(opts.inputDir.value,_).getAbsolutePath)
+    val groupedFilenames = filenames.grouped(filenames.length / opts.numThreads.value).toIterable
+    val groupedMentions = groupedFilenames.map(g => loader.fromFilenames(g.toIterator,opts.codec.value))
+    //val mentions = loader.multipleIteratorsFromFilenames(filenames.toIterator,opts.codec.value)
+    val ids = if (opts.idRestrictionsFile.wasInvoked) Source.fromFile(opts.idRestrictionsFile.value,opts.codec.value).getLines().toIterable.toSet[String] else Set[String]()
+    val tasks = GenerateCorefTasks.fromMultiple(groupedMentions,canopyAssignment,ids)
+    val nameProcessor = NameProcessor.fromString(opts.nameProcessor.value)
+    GenerateCorefTasks.fromMultiple(groupedMentions,canopyAssignment,ids,nameProcessor)
   }
 }
