@@ -19,32 +19,39 @@ import java.util
 import edu.umass.cs.iesl.author_coref.coreference.Canopies
 import edu.umass.cs.iesl.author_coref.data_structures.coreference.{AuthorMention, CorefTask}
 import edu.umass.cs.iesl.author_coref.db.{EmptyDataStore, GenerateAuthorMentionsFromACL}
-import edu.umass.cs.iesl.author_coref.load.{LoadBibtex, LoadBibtexSingleRecordPerFile, LoadACL, LoadJSONAuthorMentions}
-import edu.umass.cs.iesl.author_coref.utilities.{CanopyOpts, NameProcessorOpts, CodecCmdOption, NumThreads}
+import edu.umass.cs.iesl.author_coref.load.{LoadACL, LoadBibtex, LoadBibtexSingleRecordPerFile, LoadJSONAuthorMentions}
+import edu.umass.cs.iesl.author_coref.utilities.{CanopyOpts, CodecCmdOption, NameProcessorOpts, NumThreads}
 
 import scala.collection.JavaConverters._
 import scala.collection.mutable.ArrayBuffer
 import scala.io.Source
+import scala.util.Sorting
 
 object GenerateCorefTasks {
   
   def fromMultiple(mentionStreams: Iterable[Iterator[AuthorMention]], assignment: AuthorMention => String, ids: Set[String], nameProcessor: NameProcessor = CaseInsensitiveReEvaluatingNameProcessor) = {
     @volatile var maps = new ArrayBuffer[Map[String,Iterable[String]]]()
+    val start = System.currentTimeMillis()
+    println(s"[GenerateCorefTasks] Determining Blocking/Canopy assignments using ${mentionStreams.size} streams of mentions")
     mentionStreams.par.foreach{
       mentions =>
         val r = assignmentMap(canopyAssignments(mentions.filter(p => ids.isEmpty || ids.contains(p.mentionId.value)), assignment,nameProcessor))
         synchronized {maps += r}
     }
+    val end = System.currentTimeMillis()
+    println(s"[GenerateCorefTasks] Finished processing streams in parallel in ${end-start} ms. Merging the results.")
     mergeMaps(maps)
   }
   
   def writeToFile(map:Iterable[(String,Iterable[String])], file: File) = {
+    println(s"[GenerateCorefTasks] Writing tasks to ${file.getAbsolutePath}")
     val pw = new PrintWriter(file, "UTF-8")
     map.foreach{
       case (name,ids) =>
         pw.println(CorefTask(name,ids).toString)
         pw.flush()
     }
+    println(s"[GenerateCorefTasks] Completed writing")
     pw.close()
   }
 
@@ -58,14 +65,22 @@ object GenerateCorefTasks {
   def mergeMaps(maps: Iterable[Map[String,Iterable[String]]]): Iterable[(String,Iterable[String])] = {
 
     val finalMap = new util.HashMap[String, ArrayBuffer[String]](maps.map(_.size).sum).asScala
-    maps.foreach(_.foreach{
+    maps.zipWithIndex.foreach{
+      case(m,idx) =>
+        println(s"[GenerateCorefTasks] Merging map ${idx+1} of ${maps.size}")
+        m.foreach{
       case (string,iter)  =>
         if (!finalMap.contains(string))
           finalMap.put(string, new ArrayBuffer[String]())
         finalMap(string) ++= iter
-    })
+    }}
     // Since this was generated in parallel, we need to somehow in force an ordering
-    finalMap.mapValues(f => f.sorted).toIndexedSeq.sortBy(m => (-m._2.size,m._1))
+    println(s"[GenerateCorefTasks] Sorting the ids within a block.")
+    finalMap.values.foreach(v => Sorting.stableSort(v))
+    println(s"[GenerateCorefTasks] Sorting the tasks by their size")
+    val res = finalMap.toIndexedSeq.sortBy(m => (-m._2.size,m._1))
+    println(s"[GenerateCorefTasks] Completed sorting")
+    res
   }
 
 }
