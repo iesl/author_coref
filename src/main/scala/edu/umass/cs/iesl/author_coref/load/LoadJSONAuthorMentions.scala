@@ -19,7 +19,10 @@ object LoadJSONAuthorMentions {
 
   def loadLines(lines: Iterator[String]) = lines.flatMap(loadLine)
 
-  def load(file: File, codec: String) = loadLines(file.lines(codec))
+  def load(file: File, codec: String) = {
+    println(s"[LoadJSONAuthorMentions] Loading from ${file.getAbsolutePath}")
+    loadLines(file.lines(codec))
+  }
 
   def load(file: File, codec: String, start: Int, end: Int) = loadLines(file.lines(codec,start,end))
 
@@ -35,4 +38,12 @@ object LoadJSONAuthorMentions {
     val startingIndices = (0 until numThreads).map(_ * blockSize)
     startingIndices.dropRight(1).zip(startingIndices.drop(1)).map(f => load(file,codec,f._1,f._2)) ++ Iterable(load(file,codec,startingIndices.last))
   }
+
+  def fromFiles(files: Iterable[File], codec: String) = files.map(f => LoadJSONAuthorMentions.load(f,codec))
+
+  def fromDir(dir: File,codec: String) = {
+    println(s"[LoadJSONAuthorMentions] Loading from directory ${dir.getAbsolutePath}")
+    fromFiles(dir.listFiles.filterNot(_.getName.startsWith("\\.")),codec)
+  }
+
 }
