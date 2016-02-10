@@ -20,7 +20,7 @@ import edu.umass.cs.iesl.author_coref.coreference.Canopies
 import edu.umass.cs.iesl.author_coref.data_structures.coreference.{AuthorMention, CorefTask}
 import edu.umass.cs.iesl.author_coref.db.{EmptyDataStore, GenerateAuthorMentionsFromACL}
 import edu.umass.cs.iesl.author_coref.load.{LoadACL, LoadBibtex, LoadBibtexSingleRecordPerFile, LoadJSONAuthorMentions}
-import edu.umass.cs.iesl.author_coref.utilities.{CanopyOpts, CodecCmdOption, NameProcessorOpts, NumThreads}
+import edu.umass.cs.iesl.author_coref.utilities._
 
 import scala.collection.JavaConverters._
 import scala.collection.mutable.ArrayBuffer
@@ -119,7 +119,7 @@ object GenerateCorefTasksFromACL {
   
 }
 
-class GenerateCorefTasksFromJSONOpts extends GenerateCorefTasksOpts with CodecCmdOption with NumThreads {
+class GenerateCorefTasksFromJSONOpts extends GenerateCorefTasksOpts with CodecCmdOption with NumThreads with NumLines {
   val jsonFile = new CmdOption[String]("json-file", "The JSON file containing the mentions", true)
 }
 
@@ -127,7 +127,7 @@ object GenerateCorefTasksFromJSON {
   def main(args: Array[String]): Unit = {
     val opts = new GenerateCorefTasksFromJSONOpts()
     opts.parse(args)
-    val mentions = LoadJSONAuthorMentions.loadMultiple(new File(opts.jsonFile.value),opts.codec.value,opts.numThreads.value)
+    val mentions = LoadJSONAuthorMentions.loadMultiple(new File(opts.jsonFile.value),opts.codec.value,opts.numThreads.value, if (opts.numLines.wasInvoked) Some(opts.numLines.value) else None)
     val canopyAssignment = opts.canopies.value.map(Canopies.fromString).map(fn => (authorMention: AuthorMention) => fn(authorMention.self.value)).last
     val ids = if (opts.idRestrictionsFile.wasInvoked) Source.fromFile(opts.idRestrictionsFile.value,opts.codec.value).getLines().toIterable.toSet[String] else Set[String]()
     val nameProcessor = NameProcessor.fromString(opts.nameProcessor.value)

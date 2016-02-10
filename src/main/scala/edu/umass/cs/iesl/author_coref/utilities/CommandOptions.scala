@@ -25,6 +25,9 @@ trait NumThreads extends DefaultCmdOptions {
   val numThreads = new CmdOption[Int]("num-threads", 1, "INT", "The number of threads to use.")
 }
 
+trait NumLines extends DefaultCmdOptions {
+  val numLines = new CmdOption[Int]("num-lines", 1, "INT", "The number of lines in a given the file")
+}
 
 /**
  * The command line options used for any connection to mongo.
