@@ -25,12 +25,14 @@ object LoadJSONAuthorMentions {
 
   def load(file: File, codec: String, start: Int) = loadLines(file.lines(codec,start))
 
-  def loadMultiple(file: File, codec: String, num: Int) = {
-    val numLinesInFile = file.numLines
-    println(s"[${this.getClass.ordinaryName}] There are $numLinesInFile in ${file.getName}")
-    val blockSize = numLinesInFile/num
-    println(s"[${this.getClass.ordinaryName}] Each of the $num iterators will have about $blockSize items")
-    val startingIndices = (0 until num).map(_ * blockSize)
+  def loadMultiple(file: File, codec: String, numThreads: Int, numLines: Option[Int] = None) = {
+    val start = System.currentTimeMillis()
+    val numLinesInFile = if (numLines.nonEmpty) numLines.get else file.numLines()
+    val end = System.currentTimeMillis()
+    println(s"[${this.getClass.ordinaryName}] There are $numLinesInFile in ${file.getName} (found in ${end-start} ms)")
+    val blockSize = numLinesInFile/numThreads
+    println(s"[${this.getClass.ordinaryName}] Each of the $numThreads iterators will have about $blockSize items")
+    val startingIndices = (0 until numThreads).map(_ * blockSize)
     startingIndices.dropRight(1).zip(startingIndices.drop(1)).map(f => load(file,codec,f._1,f._2)) ++ Iterable(load(file,codec,startingIndices.last))
   }
 }
