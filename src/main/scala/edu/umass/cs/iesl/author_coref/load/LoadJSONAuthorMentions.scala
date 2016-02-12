@@ -30,7 +30,7 @@ object LoadJSONAuthorMentions {
 
   def loadMultiple(file: File, codec: String, numThreads: Int, numLines: Option[Int] = None) = {
     val start = System.currentTimeMillis()
-    val numLinesInFile = if (numLines.nonEmpty) numLines.get else file.numLines()
+    val numLinesInFile = if (numLines.nonEmpty) numLines.get else file.numLines
     val end = System.currentTimeMillis()
     println(s"[${this.getClass.ordinaryName}] There are $numLinesInFile in ${file.getName} (found in ${end-start} ms)")
     val blockSize = numLinesInFile/numThreads
