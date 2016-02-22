@@ -86,7 +86,7 @@ trait ParallelCoreference {
     val wrtr = writer
     val taskWithMentions = getMentions(task)
     val alg = algorithmFromTask(taskWithMentions)
-    runCoref(alg,getMentions(task))
+    runCoref(alg,taskWithMentions)
     wrtr.write(task, alg.clusterIds)
   }
 
