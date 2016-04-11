@@ -16,6 +16,7 @@ package edu.umass.cs.iesl.author_coref.coreference
 import cc.factorie.app.nlp.hcoref._
 import cc.factorie.util.DefaultCmdOptions
 import edu.umass.cs.iesl.author_coref.data_structures.coreference.CorefAuthorVars
+import edu.umass.cs.iesl.author_coref.utilities.KeystoreOpts
 
 
 /**
@@ -39,11 +40,11 @@ object AuthorCorefModel {
     if(opts.entitySizeWeight.value != 0.0)authorCorefModel += new EntitySizePrior(opts.entitySizeWeight.value,opts.entitySizeExponent.value)
 
     // First names
-    if(opts.bagFirstWeight.value != 0.0)authorCorefModel += new EntityNameTemplate(opts.bagFirstInitialWeight.value,opts.bagFirstNameWeight.value,opts.bagFirstWeight.value,opts.bagFirstSaturation.value,opts.bagFirstNoNamePenalty.value, {b:CorefAuthorVars => b.firstNames}, "first initial")
+    if(opts.bagFirstWeight.value != 0.0)authorCorefModel += new SizeLimitingEntityNameTemplate(opts.bagFirstInitialWeight.value,opts.bagFirstNameWeight.value,opts.bagFirstWeight.value,opts.bagFirstSaturation.value,opts.bagFirstNoNamePenalty.value, getBag =  { b:CorefAuthorVars => b.firstNames},bagName = "first initial")
     if(opts.bagFirstNoNamePenalty.value != 0.0)authorCorefModel += new EmptyBagPenalty(opts.bagFirstNoNamePenalty.value, {b:CorefAuthorVars => b.firstNames}, "first names")
 
     // Middle names
-    if(opts.bagMiddleWeight.value != 0.0)authorCorefModel += new EntityNameTemplate(opts.bagMiddleInitialWeight.value,opts.bagMiddleNameWeight.value,opts.bagMiddleWeight.value,opts.bagMiddleSaturation.value,opts.bagMiddleNoNamePenalty.value, {b:CorefAuthorVars => b.middleNames}, "middle initial")
+    if(opts.bagMiddleWeight.value != 0.0)authorCorefModel += new SizeLimitingEntityNameTemplate(opts.bagMiddleInitialWeight.value,opts.bagMiddleNameWeight.value,opts.bagMiddleWeight.value,opts.bagMiddleSaturation.value,opts.bagMiddleNoNamePenalty.value, getBag = {b:CorefAuthorVars => b.middleNames}, bagName = "middle initial")
     if(opts.bagMiddleNoNamePenalty.value != 0.0)authorCorefModel += new EmptyBagPenalty(opts.bagMiddleNoNamePenalty.value, {b:CorefAuthorVars => b.middleNames}, "middle names")
 
     // Emails
@@ -96,7 +97,7 @@ object AuthorCorefModel {
   * The command line options for the author coreference model used to determine the weights of the
   * templates in the model.
   */
-trait AuthorCorefModelOptions extends DefaultCmdOptions {
+trait AuthorCorefModelOptions extends DefaultCmdOptions with KeystoreOpts {
 
   // Author information
 
