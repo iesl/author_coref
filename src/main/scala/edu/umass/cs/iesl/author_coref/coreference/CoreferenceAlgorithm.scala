@@ -107,7 +107,7 @@ trait HierarchicalCorefSystem[V <: NodeVariables[V] with MutableSingularCanopy,C
     * @param ments estimate based on these mentions
     * @return
     */
-  def estimateIterations(ments: Iterable[Node[V]]) = math.min(ments.size * 30.0, 1000000.0).toInt
+  def estimateIterations(ments: Iterable[Node[V]]) = math.min(ments.size * 50.0, 4000000.0).toInt
 
   /**
     * Return the sampler that will be used to perform inference on the given
@@ -272,7 +272,7 @@ class StandardHCorefSystem(opts: AuthorCorefModelOptions, val mentions: Iterable
     with CanopyPairGenerator[CorefAuthorVars]
     with AuthorCorefMoveGenerator[CorefAuthorVars] {
     def autoStopThreshold = 50000
-    def newInstance(implicit d: DiffList) = new Node[CorefAuthorVars](new CorefAuthorVars)
+    def newInstance(implicit d: DiffList) = new Node[CorefAuthorVars](new CorefAuthorVars(opts.keystoreDim.value))
   }
 
 }

@@ -88,7 +88,7 @@ class AuthorMention extends CorefMention {
   val source = new StringSlot("source")
 
 
-  def coAuthorStrings: Iterable[String] = coauthors.opt.getOrElse(Iterable()).map(_.normalized.formattedString).filter(_.nonEmpty)
+  def coAuthorStrings: Iterable[String] = coauthors.opt.getOrElse(Iterable()).flatMap(_.lastName.opt).filter(_.nonEmpty)
 
   def venueStrings = venues.opt.getOrElse(Iterable()).flatMap(_.name.opt).filter(_.nonEmpty)
 
@@ -111,7 +111,7 @@ class AuthorMention extends CorefMention {
     
     // Title embedding
     val titleEmbeddingKeywordsBag = new DenseDoubleBagVariable(keystore.dimensionality)
-    val embedding = keystore.generateVector(titleEmbeddingKeywords.opt.getOrElse(Iterable()))
+    val embedding = keystore.generateAvgVector(titleEmbeddingKeywords.opt.getOrElse(Iterable()))
     titleEmbeddingKeywordsBag.set(embedding)(null)
     
     // Topics

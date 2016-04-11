@@ -37,6 +37,22 @@ trait Keystore {
     val res = retrieve(key)
     res
   }.foldLeft(new Array[Double](dimensionality)){case (tot, arr) => tot += arr; tot}
+
+  def generateAvgVector(keys:Iterable[String]):Array[Double] = {
+    val t = new Array[Double](dimensionality)
+    var c = 0
+    keys.foreach{
+      k =>
+        val res = retrieve(k)
+        if (res.isDefined) {
+          c += 1
+          t += res.get
+        }
+    }
+    if (c > 0) t /= c
+    t
+  }
+
 }
 
 class InMemoryKeystore(map: scala.collection.Map[String,Array[Double]]) extends Keystore {

@@ -19,35 +19,35 @@ import edu.umass.cs.iesl.author_coref.coreference.MutableSingularCanopy
 
 // Modified from AuthorVars in factorie
 class CorefAuthorVars(
-                      // Author information
-                      val firstNames:BagOfWordsVariable,
-                      val middleNames:BagOfWordsVariable,
-                      val lastNames: BagOfWordsVariable,
-                      val emails: BagOfWordsVariable,
-                      val institutions: BagOfWordsVariable,
-                      val coauthors: BagOfWordsVariable,
+                       // Author information
+                       val firstNames:BagOfWordsVariable,
+                       val middleNames:BagOfWordsVariable,
+                       val lastNames: BagOfWordsVariable,
+                       val emails: BagOfWordsVariable,
+                       val institutions: BagOfWordsVariable,
+                       val coauthors: BagOfWordsVariable,
 
-                      // Publication information
-                      val titleEmbeddingKeywords: DenseDoubleBagVariable, // Embedding of the title
-                      val discreteTopics: BagOfWordsVariable, // Topics from LDA
-                      val text: BagOfWordsVariable, // Sparse BoW of the text
-                      val textEmbeddingKeywords: DenseDoubleBagVariable, // Embedding of the text
-                      val keywords: BagOfWordsVariable, // keywords, both specified and derived
-                      val venues: BagOfWordsVariable, // the venue information
-                      
-                      // Bookkeeping
-                      var canopy:String,
-                      val truth:BagOfWordsVariable, source:String = "") extends NodeVariables[CorefAuthorVars] with MutableSingularCanopy with GroundTruth {
+                       // Publication information
+                       val titleEmbeddingKeywords: DenseDoubleBagVariable, // Embedding of the title
+                       val discreteTopics: BagOfWordsVariable, // Topics from LDA
+                       val text: BagOfWordsVariable, // Sparse BoW of the text
+                       val textEmbeddingKeywords: DenseDoubleBagVariable, // Embedding of the text
+                       val keywords: BagOfWordsVariable, // keywords, both specified and derived
+                       val venues: BagOfWordsVariable, // the venue information
 
-  
-  def this(dim: Int) = this(new BagOfWordsVariable(),new BagOfWordsVariable(),new BagOfWordsVariable(),new BagOfWordsVariable(), new BagOfWordsVariable(), new BagOfWordsVariable(), new DenseDoubleBagVariable(dim), new BagOfWordsVariable(), new BagOfWordsVariable(), new DenseDoubleBagVariable(), new BagOfWordsVariable(), new BagOfWordsVariable(), "",new BagOfWordsVariable(), "")
+                       // Bookkeeping
+                       var canopy:String,
+                       val truth:BagOfWordsVariable, source:String = "") extends NodeVariables[CorefAuthorVars] with MutableSingularCanopy with GroundTruth {
+
+
+  def this(dim: Int) = this(new BagOfWordsVariable(),new BagOfWordsVariable(),new BagOfWordsVariable(),new BagOfWordsVariable(), new BagOfWordsVariable(), new BagOfWordsVariable(), new DenseDoubleBagVariable(dim), new BagOfWordsVariable(), new BagOfWordsVariable(), new DenseDoubleBagVariable(dim), new BagOfWordsVariable(), new BagOfWordsVariable(), "",new BagOfWordsVariable(), "")
   def this() = this(200)
 
   var provenance: Option[AuthorMention] = None
 
   def getVariables = Seq(firstNames, middleNames, lastNames, emails, institutions, coauthors, titleEmbeddingKeywords, discreteTopics, text, textEmbeddingKeywords,keywords, venues)
-  
-  def --=(other: CorefAuthorVars)(implicit d: DiffList) {
+
+  def --=(other: CorefAuthorVars)(implicit d: DiffList) = {
     this.firstNames remove other.firstNames.value
     this.middleNames remove other.middleNames.value
     this.lastNames remove other.lastNames.value
@@ -64,7 +64,7 @@ class CorefAuthorVars(
     if (d ne null) d += NoopDiff(this) // because EntityNameTemplate (and others) have InventorVar as its neighbor, but doesn't have the bags of words as neighbors
   }
 
-  def ++=(other: CorefAuthorVars)(implicit d: DiffList) {
+  def ++=(other: CorefAuthorVars)(implicit d: DiffList) = {
     this.firstNames add other.firstNames.value
     this.middleNames add other.middleNames.value
     this.lastNames add other.lastNames.value
@@ -96,7 +96,7 @@ class CorefAuthorVars(
     venues = this.venues -- other.venues,
     canopy = this.canopy,
     truth = this.truth -- other.truth)
-  
+
   def ++(other: CorefAuthorVars)(implicit d: DiffList) = new CorefAuthorVars(
     firstNames = this.firstNames ++ other.firstNames,
     middleNames = this.middleNames ++ other.middleNames,

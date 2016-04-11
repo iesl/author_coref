@@ -27,7 +27,7 @@ trait AuthorCorefMoveGenerator[Vars <: NodeVariables[Vars]]  extends MoveGenerat
     val moves = new scala.collection.mutable.ArrayBuffer[Move[Vars]]()
 
     if(e1.root != e2.root) {
-      if(e1.isMention && e2.isMention && e1.isRoot && e2.isRoot) {
+      if(e1.isRoot && e2.isRoot) {
         moves += new MergeUp[Vars](e1, e2)({d => newInstance(d)})
       } else {
         while (e1 != null) {

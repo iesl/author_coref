@@ -13,6 +13,7 @@
 
 package edu.umass.cs.iesl.author_coref.db
 
+import cc.factorie.app.nlp.lexicon.StopWords
 import edu.umass.cs.iesl.author_coref._
 import edu.umass.cs.iesl.author_coref.data_structures.coreference.AuthorMention
 import edu.umass.cs.iesl.author_coref.data_structures.{Author, RexaAuthorMention}
@@ -57,7 +58,7 @@ object GenerateAuthorMentionsFromRexa {
       authorMention.title.set(mention.altTitle)
 
     // Title Embedding keywords
-    val titleEmbeddingKeywords = (if (mention.title.isDefined) mention.title else mention.altTitle).map(_.split("\\s+")).getOrElse(Array()).toIterable.filter(_.nonEmpty).map(_.removePunctuation().toLowerCase)
+    val titleEmbeddingKeywords = (if (mention.title.isDefined) mention.title else mention.altTitle).map(_.split("\\s+")).getOrElse(Array()).toIterable.filter(_.nonEmpty).map(_.removePunctuation().toLowerCase).filterNot(StopWords.contains)
     authorMention.titleEmbeddingKeywords.set(titleEmbeddingKeywords.toSeq)
 
     // Discrete Topics
