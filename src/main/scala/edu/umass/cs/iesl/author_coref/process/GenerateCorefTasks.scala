@@ -16,56 +16,88 @@ package edu.umass.cs.iesl.author_coref.process
 import java.io.{File, PrintWriter}
 import java.util
 
+import cc.factorie.util.Threading
 import edu.umass.cs.iesl.author_coref.coreference.Canopies
 import edu.umass.cs.iesl.author_coref.data_structures.coreference.{AuthorMention, CorefTask}
 import edu.umass.cs.iesl.author_coref.db.{EmptyDataStore, GenerateAuthorMentionsFromACL}
-import edu.umass.cs.iesl.author_coref.load.{LoadBibtex, LoadBibtexSingleRecordPerFile, LoadACL, LoadJSONAuthorMentions}
-import edu.umass.cs.iesl.author_coref.utilities.{CanopyOpts, NameProcessorOpts, CodecCmdOption, NumThreads}
+import edu.umass.cs.iesl.author_coref.load.{LoadACL, LoadBibtex, LoadBibtexSingleRecordPerFile, LoadJSONAuthorMentions}
+import edu.umass.cs.iesl.author_coref.utilities._
 
+import scala.collection.GenMap
 import scala.collection.JavaConverters._
 import scala.collection.mutable.ArrayBuffer
 import scala.io.Source
 
 object GenerateCorefTasks {
-  
-  def fromMultiple(mentionStreams: Iterable[Iterator[AuthorMention]], assignment: AuthorMention => String, ids: Set[String], nameProcessor: NameProcessor = CaseInsensitiveReEvaluatingNameProcessor) = {
-    @volatile var maps = new ArrayBuffer[Map[String,Iterable[String]]]()
-    mentionStreams.par.foreach{
-      mentions =>
-        val r = assignmentMap(canopyAssignments(mentions.filter(p => ids.isEmpty || ids.contains(p.mentionId.value)), assignment,nameProcessor))
-        synchronized {maps += r}
-    }
+
+  def fromMultiple(numThreads: Int, mentionStreams: Iterable[Iterator[AuthorMention]], assignment: AuthorMention => String, ids: Set[String], nameProcessor: NameProcessor = CaseInsensitiveReEvaluatingNameProcessor) = {
+    @volatile var maps = new ArrayBuffer[GenMap[String,Iterable[String]]]()
+    val start = System.currentTimeMillis()
+    @volatile var totalCount = 0
+    println(s"[GenerateCorefTasks] Determining Blocking/Canopy assignments using ${mentionStreams.size} streams of mentions and $numThreads threads")
+    Threading.parForeach(mentionStreams, numThreads)(
+      mentions => {
+        val subMap = new util.HashMap[String,ArrayBuffer[String]]().asScala
+        var count = 0
+        mentions.foreach{
+          m =>
+            nameProcessor.process(m.self.value)
+            val canopy = new String(assignment(m))
+            if (!subMap.contains(canopy))
+              subMap.put(canopy,new ArrayBuffer[String]())
+            subMap(canopy) += new String(m.mentionId.value)
+            count += 1
+            if (count % 100000 == 0) {
+              synchronized {
+                totalCount += count
+                count = 0
+                print(s"\r[GenerateCorefTasks] Processed $totalCount records")
+              }
+            }
+        }
+        synchronized {maps += subMap}
+    })
+    val end = System.currentTimeMillis()
+    println(s"\n[GenerateCorefTasks] Finished processing streams in parallel in ${end-start} ms. Merging the results.")
     mergeMaps(maps)
   }
   
   def writeToFile(map:Iterable[(String,Iterable[String])], file: File) = {
+    println(s"[GenerateCorefTasks] Writing tasks to ${file.getAbsolutePath}")
     val pw = new PrintWriter(file, "UTF-8")
     map.foreach{
       case (name,ids) =>
         pw.println(CorefTask(name,ids).toString)
         pw.flush()
     }
+    println(s"[GenerateCorefTasks] Completed writing")
     pw.close()
   }
 
   def canopyAssignments(mentions: Iterator[AuthorMention], assignment: AuthorMention => String,nameProcessor: NameProcessor) = {
-    mentions.map(f => {nameProcessor.process(f.self.value); (assignment(f),f.mentionId.value)})
+    mentions.map(f => {nameProcessor.process(f.self.value); (new String(assignment(f)),new String(f.mentionId.value))})
   }
 
   def assignmentMap(assignments: Iterator[(String,String)]) =
     assignments.toIterable.groupBy(f => f._1).mapValues(_.map(_._2))
 
-  def mergeMaps(maps: Iterable[Map[String,Iterable[String]]]): Iterable[(String,Iterable[String])] = {
+  def mergeMaps(maps: Iterable[GenMap[String,Iterable[String]]]): Iterable[(String,Iterable[String])] = {
 
     val finalMap = new util.HashMap[String, ArrayBuffer[String]](maps.map(_.size).sum).asScala
-    maps.foreach(_.foreach{
-      case (string,iter)  =>
-        if (!finalMap.contains(string))
-          finalMap.put(string, new ArrayBuffer[String]())
-        finalMap(string) ++= iter
-    })
+    maps.zipWithIndex.foreach{
+      case(m,idx) =>
+        println(s"[GenerateCorefTasks] Merging map ${idx+1} of ${maps.size}")
+        m.foreach{
+          case (string,iter)  =>
+            if (!finalMap.contains(string))
+              finalMap.put(string, new ArrayBuffer[String]())
+            finalMap(string) ++= iter
+        }}
     // Since this was generated in parallel, we need to somehow in force an ordering
-    finalMap.mapValues(f => f.sorted).toIndexedSeq.sortBy(m => (-m._2.size,m._1))
+    println(s"[GenerateCorefTasks] Sorting")
+    val res = finalMap.mapValues(f => f.sorted).toIndexedSeq.sortBy(m => (-m._2.size,m._1))
+    println(s"[GenerateCorefTasks] Completed sorting")
+    res
   }
 
 }
@@ -98,25 +130,36 @@ object GenerateCorefTasksFromACL {
 
     val ids = if (opts.idRestrictionsFile.wasInvoked) Source.fromFile(opts.idRestrictionsFile.value,opts.codec.value).getLines().toIterable.toSet[String] else Set[String]()
     
-    val tasks = GenerateCorefTasks.fromMultiple(authorMentionStreams,canopyAssignment,ids)
+    val tasks = GenerateCorefTasks.fromMultiple(authorMentionStreams.size,authorMentionStreams,canopyAssignment,ids)
     GenerateCorefTasks.writeToFile(tasks,new File(opts.outputFile.value))
   }
   
 }
 
-class GenerateCorefTasksFromJSONOpts extends GenerateCorefTasksOpts with CodecCmdOption with NumThreads {
-  val jsonFile = new CmdOption[String]("json-file", "The JSON file containing the mentions", true)
+class GenerateCorefTasksFromJSONOpts extends GenerateCorefTasksOpts with CodecCmdOption with NumThreads with NumLines {
+  val jsonFile = new CmdOption[List[String]]("json-file", "Either a single file (parallelized within the file), multiple files (parallelized across files), or a single directory (parallelized across files in the directory).", true)
 }
 
 object GenerateCorefTasksFromJSON {
   def main(args: Array[String]): Unit = {
     val opts = new GenerateCorefTasksFromJSONOpts()
     opts.parse(args)
-    val mentions = LoadJSONAuthorMentions.loadMultiple(new File(opts.jsonFile.value),opts.codec.value,opts.numThreads.value)
+
+    val inputFiles = opts.jsonFile.value.map(new File(_))
+    val mentions: Iterable[Iterator[AuthorMention]] = if (inputFiles.length == 1) {
+      if (inputFiles.head.isDirectory) {
+        LoadJSONAuthorMentions.fromDir(inputFiles.head,opts.codec.value)
+      } else {
+        LoadJSONAuthorMentions.loadMultiple(inputFiles.head,opts.codec.value,opts.numThreads.value, if (opts.numLines.wasInvoked) Some(opts.numLines.value) else None)
+      }
+    } else {
+      LoadJSONAuthorMentions.fromFiles(inputFiles,opts.codec.value)
+    }
+
     val canopyAssignment = opts.canopies.value.map(Canopies.fromString).map(fn => (authorMention: AuthorMention) => fn(authorMention.self.value)).last
     val ids = if (opts.idRestrictionsFile.wasInvoked) Source.fromFile(opts.idRestrictionsFile.value,opts.codec.value).getLines().toIterable.toSet[String] else Set[String]()
     val nameProcessor = NameProcessor.fromString(opts.nameProcessor.value)
-    val tasks = GenerateCorefTasks.fromMultiple(mentions,canopyAssignment,ids,nameProcessor)
+    val tasks = GenerateCorefTasks.fromMultiple(opts.numThreads.value,mentions,canopyAssignment,ids,nameProcessor)
     GenerateCorefTasks.writeToFile(tasks,new File(opts.outputFile.value))
   }
 }
@@ -138,8 +181,8 @@ object GenerateCorefTasksFromBibtex {
     val groupedMentions = groupedFilenames.map(g => loader.fromFilenames(g.toIterator,opts.codec.value))
     //val mentions = loader.multipleIteratorsFromFilenames(filenames.toIterator,opts.codec.value)
     val ids = if (opts.idRestrictionsFile.wasInvoked) Source.fromFile(opts.idRestrictionsFile.value,opts.codec.value).getLines().toIterable.toSet[String] else Set[String]()
-    val tasks = GenerateCorefTasks.fromMultiple(groupedMentions,canopyAssignment,ids)
     val nameProcessor = NameProcessor.fromString(opts.nameProcessor.value)
-    GenerateCorefTasks.fromMultiple(groupedMentions,canopyAssignment,ids,nameProcessor)
+    val tasks = GenerateCorefTasks.fromMultiple(opts.numThreads.value,groupedMentions,canopyAssignment,ids,nameProcessor)
+    GenerateCorefTasks.writeToFile(tasks,new File(opts.outputFile.value))
   }
 }

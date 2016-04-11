@@ -13,6 +13,7 @@
 
 package edu.umass.cs.iesl.author_coref.db
 
+import cc.factorie.util.Threading
 import edu.umass.cs.iesl.author_coref.data_structures.coreference.AuthorMention
 
 object PopulateAuthorMentionDB {
@@ -20,9 +21,11 @@ object PopulateAuthorMentionDB {
   def insert(mentions: Iterator[AuthorMention], db: AuthorMentionDB, bufferSize: Int) =
     insertPar(Iterable(mentions),db,bufferSize)
   
-  def insertPar(mentionStreams: Iterable[Iterator[AuthorMention]], db: AuthorMentionDB, bufferSize: Int) =
-    mentionStreams.par.foreach(db.bufferedInsert(_,bufferSize))
-  
+  def insertPar(mentionStreams: Iterable[Iterator[AuthorMention]], db: AuthorMentionDB, bufferSize: Int): Unit =
+    insertPar(mentionStreams.size,mentionStreams,db, bufferSize)
+
+  def insertPar(numThreads: Int, mentionStreams: Iterable[Iterator[AuthorMention]], db: AuthorMentionDB, bufferSize: Int):Unit =
+    Threading.parForeach(mentionStreams,numThreads)(stream => db.bufferedInsert(stream,bufferSize))
 }
 
 
