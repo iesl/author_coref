@@ -22,4 +22,7 @@ trait CorefMention extends CubbieWithHTMLFormatting {
   def entityId: StringSlot = new StringSlot("entityId")
 
   def goldEntityId: StringSlot = new StringSlot("goldEntityId")
+
+  def tsvString: String = this.toString()
+
 }

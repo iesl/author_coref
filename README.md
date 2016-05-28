@@ -1,19 +1,11 @@
 # Author Disambiguation #
 
-This project contains a implementation of a modified version of the Discriminative Hierarchical Coreference algorithm described in:
-
- - Wick, Michael, Sameer Singh, and Andrew McCallum. "A discriminative hierarchical model for fast coreference at large scale." Proceedings of the 50th Annual Meeting of the Association for Computational Linguistics: Long Papers-Volume 1. Association for Computational Linguistics, 2012.
- - Wick, Michael, Ari Kobren, and Andrew McCallum. "Large-scale author co-reference via hierarchical entity representations." Proceedings of the 30th International Conference on Machine Learning. 2013.
+This project can be used for coreference of scientific authors at a large scale using a fast hierarchical clustering algorithm. Due to variety of data and the algorithm's sensitivity to such changes, the model feature template parameters must be tuned for new data sets. The given parameters will likely require changes for your application and can produce bad results out of the box. To tune these parameters, if you have a development set, please consider using grid searches over candidate values that you believe to be reasonable. Also, I recommend picking cases from your development set to inspect by hand to understand system performance and looking at an error analysis of the results is recommended. If you have questions or would like to discuss this more, please contact Nicholas Monath (first dot last at gmail dot com).
 
 ## Prerequisites ##
 
-Required:
-
  - Java (1.7 or later)
  - Maven
-
-Recommended:
-
  - MongoDB
  - Scala 
 
@@ -52,14 +44,6 @@ and add the following to your ```pom.xml```:
   ...
 </dependencies>
 ```
-
-## Step by Step Guides ##
-
-We provide instructions for re-running / reproducing Author Disambiguation on Rexa and ACL and provide some more pointers about using this package on your own data.
-
-  - [Rexa](doc/REXA_EXPERIMENT.md)
-  - [ACL](doc/ACL_EXPERIMENT.md)
-  - [Custom Experiment](doc/LARGE_SCALE_EXPERIMENT_NOTES.md)
 
 ## Implementation Overview ##
 
@@ -208,7 +192,7 @@ def handleTask(task: CorefTask): Unit = {
     // Create a new instance of a CoreferenceAlgorithm to process the mentions
     val alg = algorithmFromTask(taskWithMentions)
     // Process the mentions
-    runCoref(alg,getMentions(task))
+    runCoref(alg,taskWithMentions)
     // Write the results
     val wrtr = writer
     wrtr.write(task, alg.clusterIds)
@@ -281,3 +265,15 @@ timesPW.close()
 // display the timing info
 parCoref.printTimes()
 ```
+
+## About the methods ##
+
+This project contains a implementation of a modified version of the hierarchical clustering method described in:
+
+ - Wick, Michael, Sameer Singh, and Andrew McCallum. "A discriminative hierarchical model for fast coreference at large scale." Proceedings of the 50th Annual Meeting of the Association for Computational Linguistics: Long Papers-Volume 1. Association for Computational Linguistics, 2012.
+ - Wick, Michael, Ari Kobren, and Andrew McCallum. "Large-scale author co-reference via hierarchical entity representations." Proceedings of the 30th International Conference on Machine Learning. 2013.
+
+
+## Setting up code to run ##
+
+Please see [this doc](doc/LARGE_SCALE_EXPERIMENT_NOTES.md)

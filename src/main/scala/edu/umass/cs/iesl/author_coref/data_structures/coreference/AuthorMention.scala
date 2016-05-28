@@ -14,6 +14,7 @@
 package edu.umass.cs.iesl.author_coref.data_structures.coreference
 
 import cc.factorie.app.nlp.hcoref.Mention
+import cc.factorie.app.nlp.lexicon.StopWords
 import cc.factorie.variable.{BagOfWordsVariable, DenseDoubleBagVariable}
 import edu.umass.cs.iesl.author_coref.coreference.Keystore
 import edu.umass.cs.iesl.author_coref.data_structures._
@@ -111,7 +112,7 @@ class AuthorMention extends CorefMention {
     
     // Title embedding
     val titleEmbeddingKeywordsBag = new DenseDoubleBagVariable(keystore.dimensionality)
-    val embedding = keystore.generateAvgVector(titleEmbeddingKeywords.opt.getOrElse(Iterable()))
+    val embedding = keystore.generateAvgVector(titleEmbeddingKeywords.opt.getOrElse(Iterable()).filterNot(StopWords.contains))
     titleEmbeddingKeywordsBag.set(embedding)(null)
     
     // Topics
@@ -142,5 +143,5 @@ class AuthorMention extends CorefMention {
   }
   
   def toMentionNode(keystore: Keystore) = new Mention[CorefAuthorVars](toAuthorVars(keystore),mentionId.value)(null)
-
+  override def tsvString: String = s"${self.value.firstName.opt.getOrElse("")}\t${self.value.middleNames.opt.getOrElse(Seq()).filter(_.nonEmpty).mkString(",")}\t${self.value.lastName.opt.getOrElse("")}\t${coAuthorStrings.mkString(",")}\t${self.value.institutions.opt.getOrElse(Iterable()).filter(_.nonEmpty).mkString(",")}\t${title.opt.getOrElse("")}\t${keywords.opt.getOrElse(Iterable()).filter(_.nonEmpty).mkString(",")}"
 }

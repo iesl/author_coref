@@ -173,4 +173,9 @@ trait AuthorCorefModelOptions extends DefaultCmdOptions with KeystoreOpts {
 
   //structural priors
   val depthPenalty = new CmdOption("model-depth-penalty", 0.0, "N", "Penalty depth in the tree.")
+
+  // inference
+  val maxIterations = new CmdOption("max-iterations",300000.0,"DOUBLE", "Max number of iterations")
+  val iterationsMultiplier = new CmdOption("iterations-multiplier", 30.0,"DOUBLE", "This * numMentions is suggested number of iterations.")
+
 }

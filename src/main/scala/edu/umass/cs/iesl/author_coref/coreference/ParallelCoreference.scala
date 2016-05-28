@@ -19,7 +19,7 @@ import java.util
 import java.util.Date
 
 import cc.factorie.util.Threading
-import edu.umass.cs.iesl.author_coref.data_structures.coreference.{AuthorMention, CorefTaskWithMentions, CorefTask}
+import edu.umass.cs.iesl.author_coref.data_structures.coreference.{CorefMention, AuthorMention, CorefTaskWithMentions, CorefTask}
 import edu.umass.cs.iesl.author_coref.db.Datastore
 import edu.umass.cs.iesl.author_coref.load.LoadTabSeparatedTuples
 import edu.umass.cs.iesl.author_coref.process.{CaseInsensitiveReEvaluatingNameProcessor, NameProcessor}
@@ -45,7 +45,7 @@ trait ParallelCoreference {
   def allWork: Iterable[CorefTask]
 
   /**
-    * The mechanism for outputing the coreference groups
+    * The mechanism for outputting the coreference groups
     * @return
     */
   def writer: CorefOutputWriter
@@ -87,7 +87,7 @@ trait ParallelCoreference {
     val taskWithMentions = getMentions(task)
     val alg = algorithmFromTask(taskWithMentions)
     runCoref(alg,taskWithMentions)
-    wrtr.write(task, alg.clusterIds)
+    wrtr.write(task, alg.clusterIds,taskWithMentions.mentions,(m) => m.tsvString)
   }
 
   /**
@@ -147,9 +147,9 @@ trait LoadMentionsFromMongo {
   */
 abstract class StandardParallelCoreference(override val allWork: Iterable[CorefTask],
                                            override val datastore: Datastore[String, AuthorMention],
-                                           outputDir: File) extends ParallelCoreference with LoadMentionsFromMongo {
+                                           outputDir: File,debug: Boolean) extends ParallelCoreference with LoadMentionsFromMongo {
 
-  override def writer: CorefOutputWriter = new TextCorefOutputWriter(outputDir)
+  override def writer: CorefOutputWriter = new TextCorefOutputWriter(outputDir,debug = debug)
 
   override def finalizeOutput(): Unit = writer.collectResults(outputDir,new File(outputDir,"all-results.txt"))
 
@@ -174,7 +174,8 @@ class ParallelHierarchicalCoref(override val allWork: Iterable[CorefTask],
                                 keystore: Keystore,
                                 canopyFunctions: Iterable[(AuthorMention => String)],
                                 outputDir: File,
-                                override val nameProcessor: NameProcessor = CaseInsensitiveReEvaluatingNameProcessor) extends StandardParallelCoreference(allWork,datastore,outputDir) {
+                                override val nameProcessor: NameProcessor = CaseInsensitiveReEvaluatingNameProcessor,
+                                debug: Boolean = false) extends StandardParallelCoreference(allWork,datastore,outputDir,debug) {
   override def algorithmFromTask(task: CorefTaskWithMentions): CoreferenceAlgorithm[AuthorMention] = {
     val alg = new HierarchicalCoreferenceAlgorithm(opts,task.mentions,keystore,canopyFunctions,nameProcessor)
     alg.quietPrintStatements = true
@@ -188,6 +189,8 @@ class ParallelHierarchicalCoref(override val allWork: Iterable[CorefTask],
 trait CorefOutputWriter {
 
   def write(task: CorefTask, results: Iterable[(String,String)])
+
+  def write(task: CorefTask, results: Iterable[(String,String)], mentions: Iterable[CorefMention], mentionToString: (CorefMention) => String)
 
   def collectResults(outputDir: File, collectedFile: File)
 
@@ -219,7 +222,7 @@ object CorefOutputWriterHelper {
   * @param outputDirectory - the output directory
   * @param codec - the encoding of the files (default UTF8)
   */
-class TextCorefOutputWriter(outputDirectory: File, codec: String = "UTF-8") extends CorefOutputWriter {
+class TextCorefOutputWriter(outputDirectory: File, codec: String = "UTF-8", debug: Boolean = false) extends CorefOutputWriter {
 
   val validFilePathRegex = "^[1234567890qwertyuiopasdfghjklzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNM\\._]+$"
 
@@ -252,5 +255,18 @@ class TextCorefOutputWriter(outputDirectory: File, codec: String = "UTF-8") exte
         results ++= LoadTabSeparatedTuples.load(new File(directory,filename),codec)
     }
     results
+  }
+
+  override def write(task: CorefTask, results: Iterable[(String, String)], mentions: Iterable[CorefMention], mentionToString: (CorefMention) => String): Unit = {
+    val subDirName = prefix(task)
+    val mentionMap = if (debug) mentions.groupBy(_.mentionId.value).mapValues(_.head) else Map[String,CorefMention]()
+    new File(outputDirectory,subDirName).mkdirs()
+    val filename = addExtension(if (task.name.matches(validFilePathRegex)) task.name else task.name.hashCode.toString)
+    val pw = new PrintWriter(new File(new File(outputDirectory,subDirName),filename),codec)
+    if (debug)
+      results.foreach(f => {pw.println(f._1 + "\t" + f._2 + "\t" + mentionToString(mentionMap(f._1))); pw.flush()})
+    else
+      results.foreach(f => {pw.println(f._1 + "\t" + f._2 + "\t"); pw.flush()})
+    pw.close()
   }
 }

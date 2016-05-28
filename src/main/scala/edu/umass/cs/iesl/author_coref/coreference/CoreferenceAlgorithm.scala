@@ -107,7 +107,11 @@ trait HierarchicalCorefSystem[V <: NodeVariables[V] with MutableSingularCanopy,C
     * @param ments estimate based on these mentions
     * @return
     */
-  def estimateIterations(ments: Iterable[Node[V]]) = math.min(ments.size * 50.0, 4000000.0).toInt
+
+  def estimateIterations(ments: Iterable[Node[V]]) = math.min(ments.size * itersMultiplier, iterationsMax).toInt
+
+  lazy val iterationsMax = 4000000.0
+  lazy val itersMultiplier = 30.0
 
   /**
     * Return the sampler that will be used to perform inference on the given
@@ -266,6 +270,10 @@ class StandardHCorefSystem(opts: AuthorCorefModelOptions, val mentions: Iterable
 
 
   // To add monitoring to the coreference execution, add the mix in trait with DebugCoref[CorefAuthorVars] with PrintlnLogger to the sampler
+
+  override lazy val iterationsMax: Double = opts.maxIterations.value
+
+  override lazy val itersMultiplier: Double = opts.iterationsMultiplier.value
 
   override def sampler(mentions: Iterable[Node[CorefAuthorVars]]): CorefSampler[CorefAuthorVars] =  new CorefSampler[CorefAuthorVars](model, mentions, estimateIterations(mentions))
     with QuietAutoStoppingSampler[CorefAuthorVars]

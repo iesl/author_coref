@@ -413,6 +413,32 @@ Now we have generated the required inputs to the disambiguation system. The prog
 --name-processor=CaseInsensitiveReEvaluatingNameProcessor
 ```
 
+and example weight file is in ```WeightsToBeTuned.config```
+
+```
+# First names
+--model-author-bag-first-initial-weight=20.0
+--model-author-bag-first-noname-penalty=25.0
+--model-author-bag-first-name-weight=10.0
+--model-author-bag-first-saturation=40.0
+--model-author-bag-first-weight=1.0
+
+# Middle Names
+--model-author-bag-middle-initial-weight=10.0
+--model-author-bag-middle-noname-penalty=0.0
+--model-author-bag-middle-name-weight=10.0
+--model-author-bag-middle-saturation=40.0
+--model-author-bag-middle-weight=1.0
+
+# Emails
+--model-author-bag-emails-weight=20.0
+--model-author-bag-emails-shift=0.0
+--model-author-bag-emails-entropy=0.0
+--model-author-bag-emails-prior=0.0
+
+...
+```
+
 An example program for parallel disambiguation is in ```RunParallelCoreference```:
  
 ```Scala
@@ -461,8 +487,6 @@ object RunParallelCoreference {
 }
 ```
 
-Currently, the recommended model parameters for this set up are ```config/coref/DefaultWeightsWithoutTopicsAndKeywords.config```. But please note, this may change in the future. 
-
 The output of the coreference algorithm is a file ```all-results.txt``` in the output directory. This file is a two-column tab separated file with mention ids in the left column and entity ids in the right column:
 
 ```
@@ -486,7 +510,7 @@ bash scripts/coref/run_coref.sh $setting_file $parameter_file
 For example:
 
 ```
-bash scripts/coref/run_coref.sh config/coref/ParallelCoref.config config/coref/DefaultWeightsWithoutTopicsAndKeywords.config
+bash scripts/coref/run_coref.sh config/coref/ParallelCoref.config config/coref/WeightsToBeTuned.config
 ```
 
 ## Distributing Coreference ##

@@ -18,6 +18,9 @@ import java.text.Normalizer
 import edu.umass.cs.iesl.author_coref._
 import edu.umass.cs.iesl.author_coref.data_structures.PersonName
 
+import scala.collection.mutable
+import scala.collection.mutable.ArrayBuffer
+
 /**
  * This file contains a variety of name processing steps
  */
@@ -54,12 +57,46 @@ object LastNameTrimmer extends NameProcessor {
 
 object FirstMiddleSplitter extends NameProcessor {
   override def process(name: PersonName): PersonName = {
-    val split = name.firstName.opt.map(_.split("\\s")).getOrElse(Array())
-    name.firstName.set(split.headOption)
-    name.middleNames.set(name.middleNames.opt.getOrElse(Seq()) ++ split.drop(1))
+    val fn = name.firstName.opt.getOrElse("")
+    if (fn.length > 0) {
+      if (fn.length == 2) {
+        val isInitial = !(fn.charAt(0).isUpper && fn.charAt(1).isLower)
+        if (isInitial) {
+          name.firstName.set(fn.charAt(0).toString)
+          name.middleNames.set(Seq(fn.charAt(1).toString))
+        }
+      } else {
+        val split = name.firstName.opt.map(_.split("\\s")).getOrElse(Array())
+        name.firstName.set(split.headOption)
+        name.middleNames.set(name.middleNames.opt.getOrElse(Seq()) ++ split.drop(1))
+      }
+    }
     name
   }
 }
+
+object RemoveOverlappingMiddleNames extends NameProcessor {
+  override def process(name: PersonName): PersonName = {
+    if (name.middleNames.isDefined && name.middleNames.value.nonEmpty) {
+      val fn = name.firstName.opt.getOrElse("").toLowerCase
+      val ln = name.lastName.opt.getOrElse("").toLowerCase
+      val lcMn = new mutable.HashSet[String]()
+      val middles = new ArrayBuffer[String]()
+      name.middleNames.value.foreach {
+        m =>
+          val lcm = m.toLowerCase
+          if (lcm != fn && lcm != ln && !lcMn.contains(lcm)) {
+            lcMn += lcm
+            middles += m
+          }
+      }
+      name.middleNames.set(middles)
+    }
+    name
+  }
+}
+
+
 
 object LastNameSuffixProcessor extends NameProcessor {
   override def process(name: PersonName): PersonName = {
@@ -164,9 +201,9 @@ object LowerCaseSuffixes extends NameProcessor {
 
 object LowerCaseAllNames extends CompoundNameProcessor(Iterable(LowerCaseFirstName,LowerCaseMiddleNames,LowerCaseLastName,LowerCaseSuffixes))
 
-object ReEvaluatingNameProcessor extends CompoundNameProcessor(Iterable(FirstNameTrimmer,LastNameTrimmer,LastNameSuffixProcessor,LastNameAccentNameProcessor,FirstNameAccentNameProcessor,FirstMiddleSplitter))
+object ReEvaluatingNameProcessor extends CompoundNameProcessor(Iterable(FirstNameTrimmer,LastNameTrimmer,LastNameSuffixProcessor,LastNameAccentNameProcessor,FirstNameAccentNameProcessor,FirstMiddleSplitter,RemoveOverlappingMiddleNames))
 
-object CaseInsensitiveReEvaluatingNameProcessor extends CompoundNameProcessor(Iterable(FirstNameTrimmer,LastNameTrimmer,LastNameSuffixProcessor,LastNameAccentNameProcessor,FirstNameAccentNameProcessor,FirstNameUnicodeCharacterAccentNameProcessor,LastNameUnicodeCharacterAccentNameProcessor,FirstMiddleSplitter,AlphabeticOnlyAllNamesProcessor,LowerCaseAllNames))
+object CaseInsensitiveReEvaluatingNameProcessor extends CompoundNameProcessor(Iterable(FirstNameTrimmer,LastNameTrimmer,LastNameSuffixProcessor,LastNameAccentNameProcessor,FirstNameAccentNameProcessor,FirstNameUnicodeCharacterAccentNameProcessor,LastNameUnicodeCharacterAccentNameProcessor,FirstMiddleSplitter,RemoveOverlappingMiddleNames,AlphabeticOnlyAllNamesProcessor,LowerCaseAllNames))
 
 /**
   * Object to retrieve a name processor based on a string

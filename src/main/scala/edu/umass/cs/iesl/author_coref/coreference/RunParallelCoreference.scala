@@ -25,6 +25,7 @@ import edu.umass.cs.iesl.author_coref.utilities._
 class RunParallelOpts extends MongoDBOpts with CodecCmdOption with AuthorCorefModelOptions with KeystoreOpts with CanopyOpts with NumThreads with NameProcessorOpts {
   val corefTaskFile = new CmdOption[String]("coref-task-file", "The file containing the coref tasks", true)
   val outputDir = new CmdOption[String]("output-dir", "Where to write the output", true)
+  val debug =  new CmdOption[Boolean]("debug",false,"boolean","Whether or not to provide additional output in each record.")
 }
 
 /**
@@ -64,7 +65,7 @@ object RunParallelCoreference {
     println(s"[RunParallelCoreference] Using the following name processor: ${opts.nameProcessor.value}")
 
     // Initialize the coreference algorithm
-    val parCoref = new ParallelHierarchicalCoref(allWork,db,opts,keystore,canopyFunctions,new File(opts.outputDir.value),nameProcessor)
+    val parCoref = new ParallelHierarchicalCoref(allWork,db,opts,keystore,canopyFunctions,new File(opts.outputDir.value),nameProcessor,opts.debug.value)
 
     // Run the algorithm on all the tasks
     parCoref.runInParallel(opts.numThreads.value)
